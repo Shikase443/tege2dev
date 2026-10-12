@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+projects
+secrets
+runtime/codex
+runtime/state
+runtime/skills
+work
+**/target
+**/__pycache__
+**/*.pyc
+**/*.pyo
+runtime/*.log

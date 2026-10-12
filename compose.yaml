@@ -1,0 +1,43 @@
+services:
+  tege2dev:
+    image: tege2dev:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pull_policy: never
+    user: "0:0"
+    restart: unless-stopped
+    ports:
+      - "${TEGE2DEV_PORT:-8093}:8091"
+    env_file: .env
+    environment:
+      TZ: ${TZ:-Asia/Tokyo}
+      PORT: "8091"
+      CODEX_AGENT_CORE_PORT: "8090"
+      CODEX_HOME: /data/codex
+      CODEX_AGENT_DATA_DIR: /data/state
+      CODEX_AGENT_WORKSPACE: /workspace
+      CODEX_AGENT_OUTPUT_WORKSPACE: /workspace
+      CODEX_AGENT_CHARACTER_PROMPT: /data/characters/development/AGENTS.md
+      CODEX_AGENT_MODEL_PROMPT: /data/prompts/default.md
+      CODEX_AGENT_WEB_ROOT: /data/web
+      CODEX_AGENT_PROJECTS_ENABLED: "true"
+      CODEX_AGENT_UPLOAD_MAX_BYTES: "0"
+      CODEX_AGENT_PUBLIC_BASE_URL: ${CODEX_AGENT_PUBLIC_BASE_URL:-http://localhost:8093}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./runtime:/data:Z
+      - ./projects:/workspace:Z
+      - ./secrets:/run/secrets:ro,Z
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://127.0.0.1:8091/health
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

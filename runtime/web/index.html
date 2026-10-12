@@ -1,0 +1,1330 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tege2DeV</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f4f5f7; --panel:#fff; --text:#202124; --muted:#6c727f; --line:#d9dde4; --accent:#1769aa; --user:#e7f1fb; --agent:#fff; --activity:#f7f8fa; }
+    @media (prefers-color-scheme:dark) { :root { --bg:#151719; --panel:#202326; --text:#edf0f2; --muted:#a8afb8; --line:#3b4046; --accent:#64b5f6; --user:#20384b; --agent:#202326; --activity:#191c1f; } }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 system-ui,sans-serif; }
+    main { width:100%; height:100dvh; display:grid; grid-template-rows:auto 1fr auto; background:var(--panel); }
+    header { display:flex; align-items:center; gap:12px; min-height:56px; padding:10px 16px; border-bottom:1px solid var(--line); }
+    h1 { margin:0; font-size:18px; font-weight:650; }
+    nav { display:flex; align-self:stretch; gap:4px; }
+    .tab { width:auto; padding:0 10px; border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; }
+    .tab.active { border-bottom-color:var(--accent); color:var(--text); }
+    #connection-status { display:flex; align-items:center; gap:14px; margin-left:auto; white-space:nowrap; color:var(--muted); font-size:13px; }
+    #settings { display:flex; gap:8px; align-items:center; }
+    input,textarea,button,select { font:inherit; color:inherit; }
+    input,textarea,select { border:1px solid var(--line); background:var(--panel); border-radius:6px; padding:9px 10px; }
+    #project { width:190px; }
+    #project-add, #project-delete, #files-upload, #files-refresh { height:36px; padding:0; border:1px solid var(--line); border-radius:6px; background:var(--panel); cursor:pointer; line-height:1; }
+    #project-add, #files-upload, #files-refresh { width:36px; font-size:20px; }
+    #project-delete, #project-rename { width:auto; padding:0 10px; font-size:13px; white-space:nowrap; flex-shrink:0; }
+    #project-rename { height:36px; border:1px solid var(--line); border-radius:6px; background:var(--panel); cursor:pointer; }
+    #chat { min-height:0; overflow:hidden; }
+    #chat { display:grid; grid-template-columns:230px minmax(0,1fr); }
+    #file-panel { min-width:0; overflow:auto; border-right:1px solid var(--line); background:var(--activity); }
+    .file-toolbar { position:sticky; top:0; z-index:1; display:flex; align-items:center; justify-content:space-between; min-height:48px; padding:6px 10px 6px 14px; border-bottom:1px solid var(--line); background:var(--activity); }
+    .file-toolbar strong { font-size:13px; }
+    .file-actions { display:flex; gap:6px; }
+    #file-tree { padding:8px 14px 18px 6px; font-size:13px; }
+    #file-tree details { margin:0; }
+    #file-tree summary, .file-entry { min-height:28px; padding:4px 6px; overflow-wrap:anywhere; display:grid; grid-template-columns:auto 16px minmax(0,1fr) 80px; align-items:center; column-gap:7px; }
+    #file-tree summary { cursor:pointer; }
+    #file-tree summary::-webkit-details-marker { display:none; }
+    #file-tree summary::before { content:""; width:6px; height:6px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(-45deg); }
+    #file-tree details[open] > summary::before { transform:rotate(45deg); }
+    #file-tree details > :not(summary) { margin-left:13px; }
+    .file-entry { width:100%; border:0; border-radius:4px; background:transparent; color:var(--muted); text-align:left; cursor:pointer; }
+    .file-entry::before { content:""; grid-column:1; }
+    .tree-icon { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    #file-tree summary .tree-icon { color:var(--accent); }
+    #file-tree summary span, .file-entry span { min-width:0; overflow-wrap:anywhere; }
+    .tree-mtime { text-align:right; font:11px/1.4 ui-monospace,monospace; color:var(--muted); }
+    .file-entry:hover { background:var(--line); color:var(--text); }
+    #messages { min-width:0; overflow:auto; padding:20px clamp(12px,4vw,32px); }
+    .message { max-width:78%; margin:0 0 16px; padding:10px 13px; border:1px solid var(--line); border-radius:8px; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .user { margin-left:auto; background:var(--user); }
+    .agent { background:var(--agent); }
+    .message a { color:#79c7ff; text-decoration:underline; }
+    .activity { max-width:90%; margin:0 0 14px; border-left:3px solid var(--accent); background:var(--activity); padding:9px 12px; color:var(--muted); }
+    .activity summary { cursor:pointer; color:var(--text); }
+    .steps { margin:8px 0 0; padding:0; list-style:none; font:13px/1.5 ui-monospace,monospace; }
+    .steps li { padding:3px 0; border-top:1px solid var(--line); overflow-wrap:anywhere; }
+    .empty { padding:32px 16px; color:var(--muted); text-align:center; }
+    form { display:grid; grid-template-columns:1fr auto; gap:10px; padding:12px 16px; border-top:1px solid var(--line); }
+    textarea { resize:none; min-height:46px; max-height:140px; }
+    #send { width:46px; border:0; border-radius:6px; background:var(--accent); color:white; cursor:pointer; font-size:20px; }
+    #send.stop { background:#b3261e; font-size:16px; }
+    dialog { width:min(420px,calc(100% - 32px)); border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--text); padding:18px; }
+    dialog::backdrop { background:rgba(0,0,0,.45); }
+    dialog h2 { margin:0 0 14px; font-size:17px; }
+    #project-create-form { display:grid; grid-template-columns:1fr; gap:12px; padding:0; border:0; }
+    #project-name { width:100%; }
+    .dialog-actions { display:flex; justify-content:flex-end; gap:8px; }
+    .dialog-actions button { min-height:36px; padding:0 14px; border:1px solid var(--line); border-radius:6px; background:var(--panel); cursor:pointer; }
+    #project-create { background:var(--accent); color:#fff; border-color:var(--accent); }
+    #project-delete-confirm { background:#b3261e; color:#fff; border-color:#b3261e; }
+    #project-error, #project-delete-error { min-height:1.5em; color:#c62828; font-size:13px; }
+    #file-dialog { width:calc(100% - 32px); height:calc(100% - 32px); max-width:none; max-height:none; padding:0; overflow:hidden; }
+    .file-dialog-head { display:flex; align-items:center; gap:12px; min-height:48px; padding:7px 10px 7px 16px; border-bottom:1px solid var(--line); }
+    #file-dialog-title { min-width:0; flex:1; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:600 14px/1.4 ui-monospace,monospace; }
+    #file-dialog-close { width:34px; height:34px; border:0; border-radius:4px; background:transparent; cursor:pointer; font-size:22px; }
+    #file-content { width:100%; height:calc(100% - 48px); margin:0; padding:16px; overflow:auto; white-space:pre; font:13px/1.55 ui-monospace,monospace; tab-size:4; }
+    #file-image { display:block; max-width:100%; max-height:calc(100% - 48px); margin:auto; object-fit:contain; }
+    button:disabled { opacity:.45; cursor:default; }
+    @media (max-width:620px) { header { flex-wrap:wrap; } nav { order:3; width:100%; height:38px; } .tab { flex:1; } #settings { width:100%; } #project { width:150px; } #chat { grid-template-columns:150px minmax(0,1fr); } .message { max-width:92%; } }
+  </style>
+  <style id="refined-ui">
+    :root,
+    :root[data-theme="mint"] {
+      color-scheme: dark;
+      --bg:#151719;
+      --panel:#1b1e21;
+      --text:#f0f2f3;
+      --muted:#9ba3ab;
+      --line:#32373d;
+      --accent:#68c9a8;
+      --user:#203c35;
+      --agent:transparent;
+      --activity:#181b1e;
+      --accent-text:#0f241d;
+      --danger:#de7373;
+      --shadow:rgba(0,0,0,.24);
+      --header-bg:#253036;
+      --ui-font-size:14px;
+      --content-font-size:15px;
+      --code-font-size:12px;
+    }
+    :root[data-theme="amber"] {
+      color-scheme: dark;
+      --bg:#171717;
+      --panel:#1e1e1d;
+      --text:#f2f1ed;
+      --muted:#aaa69d;
+      --line:#3a3935;
+      --accent:#e4ad63;
+      --user:#3c3122;
+      --agent:transparent;
+      --activity:#1a1a19;
+      --accent-text:#2c1d08;
+      --danger:#df7770;
+      --shadow:rgba(0,0,0,.26);
+      --header-bg:#302b26;
+    }
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg:#eef1f4;
+      --panel:#f9fafb;
+      --text:#1f2933;
+      --muted:#66717d;
+      --line:#ccd3da;
+      --accent:#2877a8;
+      --user:#dcebf4;
+      --agent:transparent;
+      --activity:#f4f6f8;
+      --accent-text:#fff;
+      --danger:#b43f3f;
+      --shadow:rgba(29,43,56,.13);
+      --header-bg:#e3ebf0;
+    }
+    :root[data-theme="sumi"] {
+      color-scheme: light;
+      --bg:#efede8;
+      --panel:#f8f7f3;
+      --text:#242322;
+      --muted:#6f6a64;
+      --line:#d2cdc5;
+      --accent:#bd4e45;
+      --user:#f0dcda;
+      --agent:transparent;
+      --activity:#f4f1eb;
+      --accent-text:#fff;
+      --danger:#a83232;
+      --shadow:rgba(51,43,37,.13);
+      --header-bg:#e9e5df;
+    }
+    :root[data-font-size="small"] { --ui-font-size:13px; --content-font-size:14px; --code-font-size:11px; }
+    :root[data-font-size="large"] { --ui-font-size:15px; --content-font-size:17px; --code-font-size:13px; }
+    body { overflow:hidden; background:var(--bg); font-size:var(--ui-font-size); line-height:1.65; }
+    main { --file-pane-width:420px; grid-template-rows:auto minmax(0,1fr); background:var(--bg); }
+    header {
+      min-height:64px;
+      padding:8px 16px;
+      gap:14px;
+      background:var(--header-bg);
+    }
+    header h1 { font-size:22px; font-weight:800; font-style:italic; line-height:1.2; white-space:nowrap; }
+    nav { gap:2px; }
+    .tab { display:flex; align-items:center; min-height:38px; padding:0 9px; font-size:13px; }
+    #settings { gap:6px; }
+    #project { height:38px; padding:4px 10px; line-height:1.4; background:var(--bg); }
+    #project { width:270px; }
+    #project-add, #project-delete, #files-upload, #files-refresh {
+      height:32px;
+      border-color:var(--line);
+      background:transparent;
+    }
+    #project-add, #files-upload, #files-refresh { width:32px; }
+    #connection-status { font-size:12px; }
+    #connection-status .indicator::before {
+      content:"";
+      display:inline-block;
+      width:7px;
+      height:7px;
+      margin-right:7px;
+      border-radius:50%;
+      background:#d99a24;
+      vertical-align:1px;
+    }
+    #core-status[data-connection="connected"]::before,
+    #llm-health[data-health="healthy"]::before { background:#34a853; }
+    #llm-health[data-health="warning"]::before { background:#d99a24; }
+    #core-status[data-connection="error"]::before,
+    #llm-health[data-health="unhealthy"]::before { background:#d45b55; }
+    .theme-menu { position:relative; }
+    .theme-menu > summary {
+      min-height:38px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      padding:0 9px;
+      border:1px solid transparent;
+      border-radius:5px;
+      color:var(--muted);
+      cursor:pointer;
+      list-style:none;
+      user-select:none;
+    }
+    .theme-menu > summary::-webkit-details-marker { display:none; }
+    .theme-menu > summary::after { content:"⌄"; font-size:12px; }
+    .theme-menu[open] > summary, .theme-menu > summary:hover {
+      border-color:var(--line);
+      background:var(--activity);
+      color:var(--text);
+    }
+    .theme-options {
+      position:absolute;
+      z-index:20;
+      top:38px;
+      right:0;
+      width:214px;
+      padding:6px;
+      border:1px solid var(--line);
+      border-radius:7px;
+      background:var(--panel);
+      box-shadow:0 12px 32px var(--shadow);
+    }
+    .theme-option {
+      width:100%;
+      min-height:36px;
+      display:grid;
+      grid-template-columns:34px minmax(0,1fr) 16px;
+      align-items:center;
+      gap:8px;
+      padding:4px 7px;
+      border:0;
+      border-radius:4px;
+      background:transparent;
+      text-align:left;
+    }
+    .theme-option:hover { background:var(--activity); }
+    .theme-option[aria-checked="true"]::after { content:"✓"; color:var(--accent); }
+    .menu-divider { height:1px; margin:6px 2px; background:var(--line); }
+    .menu-label { display:block; padding:2px 7px 5px; color:var(--muted); font-size:11px; font-weight:700; }
+    .font-options { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+    .font-option {
+      min-height:32px;
+      padding:0 6px;
+      border:1px solid var(--line);
+      border-radius:4px;
+      background:transparent;
+      color:var(--muted);
+    }
+    .font-option:hover { color:var(--text); }
+    .font-option[aria-checked="true"] { border-color:var(--accent); background:var(--activity); color:var(--text); }
+    .theme-swatches { display:flex; }
+    .theme-swatches i {
+      width:13px;
+      height:18px;
+      display:block;
+      border:1px solid rgba(128,128,128,.22);
+    }
+    .theme-swatches i:first-child { border-radius:3px 0 0 3px; }
+    .theme-swatches i:last-child { border-radius:0 3px 3px 0; }
+    .swatch-mint i:first-child { background:#1b1e21; } .swatch-mint i:last-child { background:#68c9a8; }
+    .swatch-amber i:first-child { background:#1e1e1d; } .swatch-amber i:last-child { background:#e4ad63; }
+    .swatch-light i:first-child { background:#f9fafb; } .swatch-light i:last-child { background:#2877a8; }
+    .swatch-sumi i:first-child { background:#f8f7f3; } .swatch-sumi i:last-child { background:#bd4e45; }
+    #chat { display:grid; grid-template-columns:var(--file-pane-width) 5px minmax(0,1fr); }
+    #file-panel {
+      min-height:0;
+      display:grid;
+      grid-template-rows:44px minmax(0,var(--file-tree-height,calc(42% - 21px))) 6px minmax(0,1fr);
+      overflow:hidden;
+      border-right:0;
+      background:var(--panel);
+    }
+    #file-panel[hidden], #panel-resizer[hidden] { display:none; }
+    .file-toolbar { position:relative; min-height:44px; padding:5px 8px 5px 12px; background:var(--panel); }
+    .file-toolbar-label { min-width:0; display:flex; align-items:baseline; gap:7px; }
+    #upload-directory { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font:var(--code-font-size)/1.4 ui-monospace,monospace; }
+    #upload-progress { position:absolute; left:0; bottom:0; width:100%; height:2px; border:0; accent-color:var(--accent); }
+    #upload-progress[hidden] { display:none; }
+    #file-tree { min-height:0; overflow:auto; padding:8px 14px 24px 6px; }
+    #file-tree summary, .file-entry { min-height:29px; }
+    .file-entry:hover, .file-entry.active, .directory-entry.active { background:var(--activity); color:var(--text); }
+    #file-height-resizer {
+      position:relative;
+      z-index:5;
+      min-height:6px;
+      background:var(--line);
+      cursor:row-resize;
+      touch-action:none;
+    }
+    #file-height-resizer::after { content:""; position:absolute; inset:-4px 0; }
+    #file-height-resizer:hover, #file-height-resizer.dragging { background:var(--accent); }
+    #panel-resizer {
+      position:relative;
+      z-index:5;
+      min-width:5px;
+      background:var(--line);
+      cursor:col-resize;
+      touch-action:none;
+    }
+    #panel-resizer::after {
+      content:"";
+      position:absolute;
+      inset:0 -3px;
+    }
+    #panel-resizer:hover, #panel-resizer.dragging { background:var(--accent); }
+    #file-preview { min-height:0; display:grid; grid-template-rows:38px minmax(0,1fr); background:var(--activity); }
+    .file-preview-head {
+      min-width:0;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:0 7px 0 12px;
+      border-bottom:1px solid var(--line);
+    }
+    #file-preview-title {
+      min-width:0;
+      flex:1;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      color:var(--muted);
+      font:600 var(--code-font-size)/1.4 ui-monospace,monospace;
+    }
+    #file-preview-size { flex-shrink:0; color:var(--muted); font-size:11px; white-space:nowrap; }
+    #file-preview-download, #file-preview-close {
+      flex-shrink:0;
+      width:28px;
+      height:28px;
+      padding:0;
+      border:0;
+      border-radius:4px;
+      background:transparent;
+      color:var(--muted);
+      font-size:18px;
+    }
+    #file-preview-download:hover, #file-preview-close:hover { background:var(--line); color:var(--text); }
+    #file-preview-download[hidden] { display:none; }
+    .file-preview-body { min-height:0; overflow:auto; }
+    .file-preview-empty { display:grid; min-height:100%; place-items:center; padding:20px; color:var(--muted); text-align:center; }
+    .file-preview-empty[hidden] { display:none; }
+    #file-content {
+      width:100%;
+      height:auto;
+      min-height:100%;
+      margin:0;
+      padding:14px;
+      overflow:visible;
+      white-space:pre;
+      color:var(--text);
+      font:var(--code-font-size)/1.55 ui-monospace,monospace;
+      tab-size:4;
+    }
+    #file-image { display:block; max-width:100%; max-height:none; margin:auto; padding:12px; object-fit:contain; }
+    #file-image[hidden], #file-content[hidden] { display:none; }
+    #messages {
+      padding:42px max(24px,calc((100% - 860px)/2)) 190px;
+      scrollbar-gutter:stable;
+    }
+    .message-row { display:flex; flex-direction:column; align-items:flex-start; margin-bottom:4px; }
+    .message-row.user-row { align-items:flex-end; }
+    .message-row .message { margin-bottom:0; font-size:var(--content-font-size); }
+    .message-actions { display:flex; height:22px; align-items:center; gap:6px; }
+    .message-time { color:var(--muted); font-size:11px; white-space:nowrap; }
+    .copy-message { display:grid; width:22px; height:22px; padding:0; place-items:center; border:0; border-radius:4px; background:transparent; color:var(--muted); cursor:pointer; }
+    .copy-message:hover, .copy-message:focus-visible { background:var(--activity); color:var(--text); }
+    .copy-message svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .agent .copy-message { display:inline-grid; vertical-align:middle; margin-left:6px; }
+    .agent { position:relative; }
+    .agent .copy-message.block-end { position:absolute; right:0; bottom:0; margin:0; }
+    .turn-summary { display:flex; max-width:780px; gap:12px; margin:0 0 20px; color:var(--muted); font-size:var(--code-font-size); }
+    .turn-summary .message-time { font-size:inherit; }
+    .user {
+      width:fit-content;
+      max-width:76%;
+      padding:10px 14px;
+      border-color:color-mix(in srgb,var(--accent) 34%,var(--line));
+      background:var(--user);
+    }
+    .agent {
+      max-width:780px;
+      padding:0 18px 0 0;
+      border:0;
+      border-radius:0;
+      background:transparent;
+    }
+    .agent.markdown { white-space:normal; }
+    .agent.markdown > :first-child { margin-top:0; }
+    .agent.markdown > :last-child { margin-bottom:0; }
+    .agent.markdown p { margin:0 0 12px; }
+    .agent.markdown h1, .agent.markdown h2, .agent.markdown h3,
+    .agent.markdown h4, .agent.markdown h5, .agent.markdown h6 {
+      margin:22px 0 10px;
+      color:var(--text);
+      line-height:1.3;
+    }
+    .agent.markdown h1 { font-size:1.55em; }
+    .agent.markdown h2 { font-size:1.35em; }
+    .agent.markdown h3 { font-size:1.16em; }
+    .agent.markdown ul, .agent.markdown ol { margin:0 0 14px; padding-left:26px; }
+    .agent.markdown li { margin:4px 0; }
+    .agent.markdown blockquote {
+      margin:0 0 14px;
+      padding:3px 0 3px 14px;
+      border-left:3px solid var(--accent);
+      color:var(--muted);
+    }
+    .agent.markdown pre {
+      margin:0 0 14px;
+      padding:13px 15px;
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:6px;
+      background:var(--activity);
+      font:var(--code-font-size)/1.55 ui-monospace,monospace;
+      white-space:pre;
+    }
+    .agent.markdown code {
+      padding:2px 5px;
+      border-radius:4px;
+      background:var(--activity);
+      font:var(--code-font-size)/1.55 ui-monospace,monospace;
+    }
+    .agent.markdown pre code { padding:0; background:transparent; }
+    .agent.markdown hr { margin:20px 0; border:0; border-top:1px solid var(--line); }
+    .agent.markdown .table-wrap { margin:0 0 14px; overflow:auto; }
+    .agent.markdown table { width:100%; border-collapse:collapse; font-size:.94em; }
+    .agent.markdown th, .agent.markdown td { padding:8px 10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+    .agent.markdown th { background:var(--activity); font-weight:650; }
+    .agent.markdown img { display:block; max-width:100%; max-height:60vh; margin:8px 0; border:1px solid var(--line); border-radius:4px; object-fit:contain; }
+    .message a { color:var(--accent); }
+    .activity {
+      max-width:780px;
+      margin:4px 0 18px;
+      padding:7px 12px;
+      border-left:2px solid color-mix(in srgb,var(--accent) 45%,var(--line));
+      background:transparent;
+    }
+    .steps { color:var(--muted); font-size:var(--code-font-size); }
+    .steps li { padding:5px 0; border-color:var(--line); }
+    .thinking-indicator {
+      display:flex;
+      width:100%;
+      max-width:780px;
+      align-items:center;
+      padding:4px 0 24px;
+    }
+    .thinking-spinner {
+      width:18px;
+      height:18px;
+      border:2px solid color-mix(in srgb,var(--muted) 28%,transparent);
+      border-top-color:var(--accent);
+      border-radius:50%;
+      animation:thinking-spin .8s linear infinite;
+    }
+    .thinking-context { margin-left:10px; color:var(--muted); font-size:var(--code-font-size); }
+    @keyframes thinking-spin { to { transform:rotate(360deg); } }
+    @media (prefers-reduced-motion:reduce) {
+      .thinking-spinner { animation-duration:1.8s; }
+    }
+    form#form {
+      position:fixed;
+      z-index:10;
+      left:50%;
+      bottom:22px;
+      transform:translateX(-50%);
+      width:min(52vw,820px);
+      min-width:560px;
+      min-height:116px;
+      grid-template-columns:minmax(0,1fr) 42px 42px;
+      align-items:end;
+      gap:4px;
+      margin:0;
+      padding:7px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:var(--panel);
+      box-shadow:0 12px 32px var(--shadow);
+    }
+    form#form {
+      left:calc(var(--file-pane-width) + 5px + (100vw - var(--file-pane-width) - 5px)/2);
+      max-width:calc(100vw - var(--file-pane-width) - 53px);
+    }
+    form#form textarea {
+      min-height:100px;
+      max-height:240px;
+      padding:10px 11px;
+      resize:vertical;
+      border:0;
+      outline:0;
+      background:transparent;
+    }
+    #send, #stop {
+      width:36px;
+      height:36px;
+      margin-bottom:1px;
+      border-radius:6px;
+      background:var(--accent);
+      color:var(--accent-text);
+      font-size:18px;
+      font-weight:700;
+    }
+    #stop { background:var(--activity); color:var(--text); }
+    #stop[hidden] { display:none; }
+    form#form:not(.busy) { grid-template-columns:minmax(0,1fr) 42px; }
+    #command-menu { position:absolute; bottom:calc(100% + 8px); left:0; right:0; padding:5px; border:1px solid var(--line); border-radius:6px; background:var(--panel); box-shadow:0 8px 24px var(--shadow); max-height:240px; overflow:auto; }
+    #command-menu[hidden] { display:none; }
+    .command-option { display:flex; align-items:center; gap:12px; width:100%; padding:9px 10px; border:0; border-radius:4px; background:transparent; color:var(--text); text-align:left; cursor:pointer; }
+    .command-option[aria-selected="true"] { background:var(--activity); }
+    .command-option code { width:80px; flex-shrink:0; font-size:13px; }
+    .command-option span { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+    dialog { border-color:var(--line); background:var(--panel); box-shadow:0 18px 50px var(--shadow); }
+    .empty { color:var(--muted); }
+    @media (max-width:900px) {
+      header { flex-wrap:wrap; }
+      #settings { flex-shrink:0; }
+      main { --file-pane-width:320px; }
+      form#form { min-width:0; }
+      form#form { width:min(680px,calc(100vw - var(--file-pane-width) - 36px)); }
+      #messages { padding-inline:max(18px,calc((100% - 720px)/2)); }
+    }
+    @media (max-width:620px) {
+      header { min-height:52px; flex-wrap:wrap; padding-block:7px; }
+      header h1 { font-size:20px; }
+      nav { order:3; }
+      .theme-menu { margin-left:auto; }
+      #settings { order:4; }
+      main { --file-pane-width:180px; }
+      form#form { bottom:12px; }
+      form#form { width:calc(100vw - var(--file-pane-width) - 24px); min-height:104px; }
+      form#form textarea { min-height:86px; }
+      #messages { padding:26px 12px 30px; }
+      .message { font-size:var(--content-font-size); }
+      .user { max-width:90%; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Tege2DeV</h1>
+    <nav aria-label="表示切替">
+      <span class="tab active">チャット</span>
+    </nav>
+    <a href="/settings" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none;white-space:nowrap">LLM設定</a>
+    <details id="theme-menu" class="theme-menu">
+      <summary>テーマ</summary>
+      <div class="theme-options">
+        <button class="theme-option" type="button" role="radio" aria-label="グラファイト・ミント" data-theme-choice="mint"><span class="theme-swatches swatch-mint"><i></i><i></i></span><span>グラファイト・ミント</span></button>
+        <button class="theme-option" type="button" role="radio" aria-label="チャコール・アンバー" data-theme-choice="amber"><span class="theme-swatches swatch-amber"><i></i><i></i></span><span>チャコール・アンバー</span></button>
+        <button class="theme-option" type="button" role="radio" aria-label="ライト・ネイビー" data-theme-choice="light"><span class="theme-swatches swatch-light"><i></i><i></i></span><span>ライト・ネイビー</span></button>
+        <button class="theme-option" type="button" role="radio" aria-label="墨・朱" data-theme-choice="sumi"><span class="theme-swatches swatch-sumi"><i></i><i></i></span><span>墨・朱</span></button>
+        <div class="menu-divider"></div>
+        <span class="menu-label">文字サイズ</span>
+        <div class="font-options" role="radiogroup" aria-label="文字サイズ">
+          <button class="font-option" type="button" role="radio" data-font-choice="small">小</button>
+          <button class="font-option" type="button" role="radio" data-font-choice="normal">標準</button>
+          <button class="font-option" type="button" role="radio" data-font-choice="large">大</button>
+        </div>
+      </div>
+    </details>
+    <div id="settings"><select id="project" aria-label="プロジェクト"></select><button id="project-add" type="button" title="プロジェクトを作成" aria-label="プロジェクトを作成">+</button><button id="project-rename" type="button" title="プロジェクト名を変更">名前変更</button><button id="project-delete" type="button" title="プロジェクトを削除">削除</button></div>
+    <div id="connection-status"><span class="indicator" id="core-status" data-connection="connecting">Core: <span id="state">接続中</span></span><span class="indicator" id="llm-health" data-health="unhealthy">LLM: 異常</span></div>
+  </header>
+  <section id="chat">
+    <aside id="file-panel">
+      <div class="file-toolbar"><div class="file-toolbar-label"><strong>ファイル</strong><span id="upload-directory" title="アップロード先">/</span></div><div class="file-actions"><button id="files-upload" type="button" title="選択中のフォルダへファイルを追加" aria-label="選択中のフォルダへファイルを追加">+</button><button id="files-refresh" type="button" title="ファイルツリーを更新" aria-label="ファイルツリーを更新">&#8635;</button></div><progress id="upload-progress" max="100" value="0" hidden></progress></div>
+      <input id="file-upload-input" type="file" multiple hidden>
+      <div id="file-tree"></div>
+      <div id="file-height-resizer" role="separator" aria-label="ファイル一覧とプレビューの高さを調整" aria-orientation="horizontal" tabindex="0"></div>
+      <section id="file-preview" aria-label="ファイルプレビュー">
+        <div class="file-preview-head">
+          <strong id="file-preview-title">プレビュー</strong>
+          <span id="file-preview-size"></span>
+          <button id="file-preview-download" type="button" title="ファイルをダウンロード" aria-label="ファイルをダウンロード" hidden>&#8595;</button>
+          <button id="file-preview-close" type="button" title="プレビューを閉じる" aria-label="プレビューを閉じる">&#215;</button>
+        </div>
+        <div class="file-preview-body">
+          <div id="file-preview-empty" class="file-preview-empty">ファイルを選択してください</div>
+          <pre id="file-content" hidden></pre>
+          <img id="file-image" alt="" hidden>
+        </div>
+      </section>
+    </aside>
+    <div id="panel-resizer" role="separator" aria-label="ファイル領域の幅を調整" aria-orientation="vertical" tabindex="0"></div>
+    <section id="messages" aria-live="polite"></section>
+  </section>
+  <form id="form">
+    <div id="command-menu" role="listbox" aria-label="コマンド候補" hidden></div>
+    <textarea id="prompt" rows="4" placeholder="メッセージを入力" aria-controls="command-menu" aria-expanded="false" required></textarea>
+    <button id="send" type="submit" title="送信" aria-label="送信">&#8593;</button>
+    <button id="stop" type="button" title="作業を停止" aria-label="作業を停止" hidden>■</button>
+  </form>
+</main>
+<dialog id="project-dialog">
+  <h2>プロジェクトを作成</h2>
+  <form id="project-create-form">
+    <input id="project-name" aria-label="プロジェクト名" placeholder="プロジェクト名" autocomplete="off" required>
+    <div id="project-error" aria-live="polite"></div>
+    <div class="dialog-actions">
+      <button id="project-cancel" type="button">キャンセル</button>
+      <button id="project-create" type="submit">作成</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="project-delete-dialog">
+  <h2>プロジェクトを削除</h2>
+  <p id="project-delete-message"></p>
+  <div id="project-delete-error" aria-live="polite"></div>
+  <div class="dialog-actions">
+    <button id="project-delete-cancel" type="button">キャンセル</button>
+    <button id="project-delete-confirm" type="button">削除</button>
+  </div>
+</dialog>
+<script>
+const $ = id => document.getElementById(id);
+const messages = $('messages'), prompt = $('prompt'), send = $('send'), stop = $('stop'), state = $('state');
+const commandMenu = $('command-menu');
+const chatCommands = [
+  {name:'/new', description:'会話をリセット（ファイルは残します）'},
+  {name:'/compact', description:'会話を圧縮して結果を履歴に保存'},
+  {name:'/help', description:'コマンド一覧を表示'}
+];
+let commandMatches = [], commandIndex = 0;
+function hideCommandMenu() {
+  commandMenu.hidden=true; prompt.setAttribute('aria-expanded','false'); prompt.removeAttribute('aria-activedescendant');
+}
+function renderCommandMenu() {
+  commandMenu.replaceChildren();
+  commandMatches.forEach((command,index)=>{
+    const option=document.createElement('button'); option.type='button'; option.className='command-option'; option.id=`command-option-${index}`;
+    option.setAttribute('role','option'); option.setAttribute('aria-selected',String(index===commandIndex));
+    const name=document.createElement('code'); name.textContent=command.name;
+    const description=document.createElement('span'); description.textContent=command.description;
+    option.append(name,description);
+    option.addEventListener('pointerdown',event=>event.preventDefault());
+    option.addEventListener('click',()=>chooseCommand(index)); commandMenu.append(option);
+  });
+  commandMenu.hidden=false; prompt.setAttribute('aria-expanded','true'); prompt.setAttribute('aria-activedescendant',`command-option-${commandIndex}`);
+}
+function updateCommandMenu() {
+  if(busy || !/^\/[a-z]*$/.test(prompt.value)) { hideCommandMenu(); return; }
+  commandMatches=chatCommands.filter(command=>command.name.startsWith(prompt.value)); commandIndex=0;
+  if(!commandMatches.length) { hideCommandMenu(); return; }
+  renderCommandMenu();
+}
+function chooseCommand(index) {
+  prompt.value=commandMatches[index].name; hideCommandMenu(); prompt.focus(); prompt.setSelectionRange(prompt.value.length,prompt.value.length);
+}
+let compactionPending = false, compactionLine = null;
+const coreStatus = $('core-status'), llmHealth = $('llm-health');
+async function refreshLlmHealth() {
+  try {
+    const response=await fetch('/v1/agent/llm-health', {cache:'no-store'});
+    if(!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result=await response.json();
+    const labels={healthy:'良好',warning:'注意',unhealthy:'異常'};
+    llmHealth.dataset.health=result.status;
+    llmHealth.textContent=`LLM: ${labels[result.status] || '異常'}`;
+    llmHealth.title=`直近30秒: ${result.successCount}/${result.sampleCount}回接続成功`;
+  } catch(_) {
+    llmHealth.dataset.health='unhealthy';
+    llmHealth.textContent='LLM: 異常';
+    llmHealth.title='Coreから状態を取得できません';
+  }
+}
+refreshLlmHealth();
+setInterval(refreshLlmHealth, 3000);
+const project = $('project'), projectAdd = $('project-add'), projectRename = $('project-rename'), projectDelete = $('project-delete'), projectDialog = $('project-dialog'), projectName = $('project-name'), projectError = $('project-error');
+let renamingProject = null;
+const projectDeleteDialog = $('project-delete-dialog'), projectDeleteMessage = $('project-delete-message'), projectDeleteError = $('project-delete-error');
+const filePanel = $('file-panel'), fileTree = $('file-tree'), filesUpload = $('files-upload'), fileUploadInput = $('file-upload-input'), filesRefresh = $('files-refresh'), uploadDirectory = $('upload-directory'), uploadProgress = $('upload-progress');
+const panelResizer = $('panel-resizer'), fileHeightResizer = $('file-height-resizer'), filePreviewTitle = $('file-preview-title'), filePreviewEmpty = $('file-preview-empty'), fileContent = $('file-content'), fileImage = $('file-image'), filePreviewDownload = $('file-preview-download');
+const themeMenu = $('theme-menu');
+let ws, activity, steps, answer, thinkingIndicator, contextUsed = null, contextWindow = null, busy = false, steerReady = false, steerPending = '', resetNext = false, activityItems = new Map();
+function setSendMode(mode) {
+  const working=mode==='working';
+  $('form').classList.toggle('busy',working);
+  stop.hidden=!working;
+  send.title=working?'追加入力':'送信'; send.setAttribute('aria-label',send.title);
+  send.disabled=working && !steerReady;
+}
+function applyTheme(name) {
+  const selected=['mint','amber','light','sumi'].includes(name) ? name : 'mint';
+  document.documentElement.dataset.theme=selected;
+  localStorage.setItem('tege2dev.theme',selected);
+  document.querySelectorAll('[data-theme-choice]').forEach(button=>button.setAttribute('aria-checked',button.dataset.themeChoice===selected?'true':'false'));
+}
+function applyFontSize(name) {
+  const selected=['small','normal','large'].includes(name) ? name : 'normal';
+  document.documentElement.dataset.fontSize=selected;
+  localStorage.setItem('tege2dev.fontSize',selected);
+  document.querySelectorAll('[data-font-choice]').forEach(button=>button.setAttribute('aria-checked',button.dataset.fontChoice===selected?'true':'false'));
+}
+applyTheme(localStorage.getItem('tege2dev.theme') || 'mint');
+applyFontSize(localStorage.getItem('tege2dev.fontSize') || 'normal');
+document.querySelectorAll('[data-theme-choice]').forEach(button=>button.addEventListener('click',()=>{ applyTheme(button.dataset.themeChoice); themeMenu.open=false; }));
+document.querySelectorAll('[data-font-choice]').forEach(button=>button.addEventListener('click',()=>{ applyFontSize(button.dataset.fontChoice); themeMenu.open=false; }));
+document.addEventListener('click',event=>{ if(themeMenu.open && !themeMenu.contains(event.target)) themeMenu.open=false; });
+function projectSession() { return `project:${project.value}`; }
+function connect() {
+  coreStatus.dataset.connection='connecting';
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/v1/agent/ws`);
+  ws.onopen = () => { coreStatus.dataset.connection='connected'; state.textContent = '接続済み'; };
+  ws.onclose = () => { if(compactionPending) { compactionLine.textContent='整理結果を確認できません。再接続後に履歴を確認してください。'; compactionPending=false; finish(); } coreStatus.dataset.connection='connecting'; state.textContent = '再接続中'; setTimeout(connect, 1200); };
+  ws.onerror = () => { coreStatus.dataset.connection='error'; state.textContent = '接続エラー'; };
+  ws.onmessage = ({data}) => handle(JSON.parse(data));
+}
+function scroll() { messages.scrollTop = messages.scrollHeight; }
+function keepThinkingIndicatorLast() {
+  if(thinkingIndicator?.isConnected) messages.append(thinkingIndicator);
+}
+function showThinkingIndicator() {
+  if(!thinkingIndicator) {
+    thinkingIndicator=document.createElement('div'); thinkingIndicator.className='thinking-indicator'; thinkingIndicator.setAttribute('role','status'); thinkingIndicator.setAttribute('aria-label','思考中');
+    const spinner=document.createElement('span'); spinner.className='thinking-spinner'; spinner.setAttribute('aria-hidden','true'); thinkingIndicator.append(spinner);
+    const usage=document.createElement('span'); usage.className='thinking-context'; usage.textContent='コンテキスト: 確認中'; thinkingIndicator.append(usage);
+  }
+  messages.append(thinkingIndicator); scroll();
+}
+function hideThinkingIndicator() { thinkingIndicator?.remove(); thinkingIndicator=null; }
+async function copyMessage(text) {
+  if(navigator.clipboard?.writeText) {
+    try { await navigator.clipboard.writeText(text); return; } catch(_) {}
+  }
+  const field=document.createElement('textarea'); field.value=text; field.style.position='fixed'; field.style.opacity='0';
+  document.body.append(field); field.select();
+  try { if(!document.execCommand('copy')) throw new Error('コピーできませんでした'); }
+  finally { field.remove(); }
+}
+function copyButton(message) {
+  const button=document.createElement('button'); button.type='button'; button.className='copy-message'; button.title='コピー'; button.setAttribute('aria-label','コピー');
+  button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>';
+  button.addEventListener('click',async()=>{
+    try { await copyMessage(message.dataset.rawText || ''); button.title='コピーしました'; button.setAttribute('aria-label','コピーしました'); }
+    catch(_) { button.title='コピーに失敗しました'; button.setAttribute('aria-label','コピーに失敗しました'); }
+    setTimeout(()=>{ button.title='コピー'; button.setAttribute('aria-label','コピー'); },2000);
+  });
+  return button;
+}
+function markdownLink(parent,label,url) {
+  const link=document.createElement('a'); link.textContent=label;
+  if(/^(https?:\/\/|\/|#)/i.test(url)) {
+    link.href=url;
+    if(/^https?:\/\//i.test(url)) { link.target='_blank'; link.rel='noopener noreferrer'; }
+  }
+  parent.append(link);
+}
+function markdownImage(parent,label,url) {
+  const link=document.createElement('a'); link.href=url; link.target='_blank'; link.rel='noopener noreferrer';
+  const image=document.createElement('img'); image.src=url; image.alt=label; image.loading='lazy'; image.decoding='async';
+  link.append(image); parent.append(link);
+}
+function appendMarkdownInline(parent,value) {
+  let text=value;
+  const tokens=[
+    {type:'code',pattern:/`([^`\n]+)`/},
+    {type:'image',pattern:/!\[([^\]\n]*)\]\(((?:https?:\/\/|\/)[^\s)]+)\)/i},
+    {type:'link',pattern:/\[([^\]\n]+)\]\(((?:https?:\/\/|\/|#)[^\s)]+)\)/i},
+    {type:'strong',pattern:/\*\*([^*\n]+)\*\*|__([^_\n]+)__/},
+    {type:'strike',pattern:/~~([^~\n]+)~~/},
+    {type:'em',pattern:/\*([^*\n]+)\*|_([^_\n]+)_/},
+    {type:'url',pattern:/https?:\/\/[^\s<>"'`]+/i},
+  ];
+  while(text) {
+    let selected=null;
+    for(const token of tokens) {
+      const match=token.pattern.exec(text);
+      if(match && (!selected || match.index<selected.match.index)) selected={token,match};
+    }
+    if(!selected) { parent.append(document.createTextNode(text)); break; }
+    if(selected.match.index>0) parent.append(document.createTextNode(text.slice(0,selected.match.index)));
+    const {type}=selected.token; const match=selected.match;
+    if(type==='code') { const code=document.createElement('code'); code.textContent=match[1]; parent.append(code); }
+    else if(type==='image') markdownImage(parent,match[1],match[2]);
+    else if(type==='link') markdownLink(parent,match[1],match[2]);
+    else if(type==='url') {
+      let url=match[0], suffix='';
+      while(/[.,!?;:)\]}、。！？」』】]$/.test(url)) { suffix=url.slice(-1)+suffix; url=url.slice(0,-1); }
+      markdownLink(parent,url,url); if(suffix) parent.append(document.createTextNode(suffix));
+    } else {
+      const tag=type==='strong'?'strong':type==='strike'?'del':'em'; const node=document.createElement(tag);
+      appendMarkdownInline(node,match[1] || match[2] || ''); parent.append(node);
+    }
+    text=text.slice(match.index+match[0].length);
+  }
+}
+function appendMarkdownText(parent,text) {
+  text.split('\n').forEach((line,index)=>{ if(index) parent.append(document.createElement('br')); appendMarkdownInline(parent,line); });
+}
+function markdownTableCells(line) {
+  let value=line.trim(); if(value.startsWith('|')) value=value.slice(1); if(value.endsWith('|')) value=value.slice(0,-1);
+  return value.split('|').map(cell=>cell.trim());
+}
+function isMarkdownTableDivider(line) {
+  const cells=markdownTableCells(line); return cells.length>0 && cells.every(cell=>/^:?-{3,}:?$/.test(cell));
+}
+function isMarkdownBlockStart(lines,index) {
+  const line=lines[index] || '';
+  return /^\s*$/.test(line) || /^ {0,3}```/.test(line) || /^#{1,6}\s+/.test(line) || /^\s*>\s?/.test(line) || /^\s*(?:[-+*]|\d+\.)\s+/.test(line) || /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line) || (index+1<lines.length && line.includes('|') && isMarkdownTableDivider(lines[index+1]));
+}
+function renderMarkdownBlocks(parent,text) {
+  const lines=String(text || '').replace(/\r\n?/g,'\n').split('\n');
+  for(let index=0; index<lines.length;) {
+    const line=lines[index];
+    if(!line.trim()) { index++; continue; }
+    const fence=/^( {0,3})```([^\s`]*)\s*$/.exec(line);
+    if(fence) {
+      const body=[]; index++;
+      while(index<lines.length && !/^ {0,3}```\s*$/.test(lines[index])) {
+        const codeLine=lines[index++]; body.push(codeLine.startsWith(fence[1]) ? codeLine.slice(fence[1].length) : codeLine);
+      }
+      if(index<lines.length) index++;
+      const pre=document.createElement('pre'); const code=document.createElement('code'); code.textContent=body.join('\n');
+      if(fence[2]) code.className=`language-${fence[2].replace(/[^\w+-]/g,'')}`;
+      pre.append(code); parent.append(pre); continue;
+    }
+    const heading=/^(#{1,6})\s+(.+)$/.exec(line);
+    if(heading) { const node=document.createElement(`h${heading[1].length}`); appendMarkdownInline(node,heading[2]); parent.append(node); index++; continue; }
+    if(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { parent.append(document.createElement('hr')); index++; continue; }
+    if(/^\s*>\s?/.test(line)) {
+      const quote=[]; while(index<lines.length && /^\s*>\s?/.test(lines[index])) quote.push(lines[index++].replace(/^\s*>\s?/,''));
+      const blockquote=document.createElement('blockquote'); renderMarkdownBlocks(blockquote,quote.join('\n')); parent.append(blockquote); continue;
+    }
+    const listMatch=/^\s*([-+*]|\d+\.)\s+(.+)$/.exec(line);
+    if(listMatch) {
+      const ordered=/\d+\./.test(listMatch[1]); const list=document.createElement(ordered?'ol':'ul');
+      while(index<lines.length) {
+        const item=/^\s*([-+*]|\d+\.)\s+(.+)$/.exec(lines[index]);
+        if(!item || /\d+\./.test(item[1])!==ordered) break;
+        const li=document.createElement('li'); appendMarkdownInline(li,item[2]); list.append(li); index++;
+      }
+      parent.append(list); continue;
+    }
+    if(index+1<lines.length && line.includes('|') && isMarkdownTableDivider(lines[index+1])) {
+      const headers=markdownTableCells(line); index+=2; const table=document.createElement('table'); const thead=document.createElement('thead'); const headRow=document.createElement('tr');
+      headers.forEach(value=>{ const th=document.createElement('th'); appendMarkdownInline(th,value); headRow.append(th); }); thead.append(headRow); table.append(thead);
+      const tbody=document.createElement('tbody');
+      while(index<lines.length && lines[index].includes('|') && lines[index].trim()) {
+        const row=document.createElement('tr'); const cells=markdownTableCells(lines[index++]);
+        headers.forEach((_,cellIndex)=>{ const td=document.createElement('td'); appendMarkdownInline(td,cells[cellIndex] || ''); row.append(td); }); tbody.append(row);
+      }
+      table.append(tbody); const wrap=document.createElement('div'); wrap.className='table-wrap'; wrap.append(table); parent.append(wrap); continue;
+    }
+    const paragraph=[];
+    while(index<lines.length && !isMarkdownBlockStart(lines,index)) paragraph.push(lines[index++]);
+    if(!paragraph.length) paragraph.push(lines[index++]);
+    const p=document.createElement('p'); appendMarkdownText(p,paragraph.join('\n')); parent.append(p);
+  }
+}
+function appendAnswerCopy(element) {
+  if(!element.dataset.rawText) return;
+  const button=copyButton(element);
+  const last=element.lastElementChild;
+  const target=last?.matches('ul,ol') ? last.lastElementChild : last;
+  if(target?.matches('p,li,h1,h2,h3,h4,h5,h6')) target.append(button);
+  else { if(last) button.classList.add('block-end'); element.append(button); }
+}
+function renderMarkdown(element,text) { element.classList.add('markdown'); element.replaceChildren(); renderMarkdownBlocks(element,text); appendAnswerCopy(element); }
+function linkifyUrls(element) {
+  const text=element.textContent || ''; const pattern=/https?:\/\/[^\s<>"'`]+/g; const fragment=document.createDocumentFragment(); let cursor=0;
+  for(const match of text.matchAll(pattern)) {
+    let url=match[0], suffix='';
+    while(/[.,!?;:)\]}、。！？」』】]$/.test(url)) { suffix=url.slice(-1)+suffix; url=url.slice(0,-1); }
+    fragment.append(document.createTextNode(text.slice(cursor,match.index)));
+    const link=document.createElement('a'); link.href=url; link.target='_blank'; link.rel='noopener noreferrer'; link.textContent=url; fragment.append(link);
+    if(suffix) fragment.append(document.createTextNode(suffix)); cursor=match.index+match[0].length;
+  }
+  if(cursor===0) return; fragment.append(document.createTextNode(text.slice(cursor))); element.replaceChildren(fragment);
+}
+function timestampText(value) {
+  const date=value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value || '') : date.toLocaleString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}
+function bubble(role, text='', timestamp=null) {
+  const row=document.createElement('div'); row.className=`message-row ${role}-row`;
+  const el=document.createElement('div'); el.className=`message ${role}`; el.dataset.rawText=text;
+  if(role==='agent' && text) renderMarkdown(el,text); else el.textContent=text;
+  row.append(el);
+  if(role==='user') {
+    const actions=document.createElement('div'); actions.className='message-actions'; actions.append(copyButton(el));
+    const time=document.createElement('time'); time.className='message-time'; time.textContent=timestampText(timestamp || new Date()); actions.append(time);
+    row.append(actions);
+  }
+  messages.append(row); keepThinkingIndicatorLast(); scroll(); return el;
+}
+function closeActivity() {
+  if(activity) { activity.querySelector('summary').textContent='処理内容'; activity.open=false; }
+  activity=steps=null;
+}
+function closeAnswer() {
+  if(answer) renderMarkdown(answer,answer.dataset.rawText || '');
+  answer=null;
+}
+function beginActivity() {
+  closeActivity(); closeAnswer();
+  activity=document.createElement('details'); activity.className='activity'; activity.open=true;
+  const summary=document.createElement('summary'); summary.textContent='処理中'; steps=document.createElement('ul'); steps.className='steps';
+  activity.append(summary,steps); messages.append(activity); keepThinkingIndicatorLast(); scroll();
+}
+function step(text) { if(!steps) beginActivity(); const li=document.createElement('li'); li.textContent=text; steps.append(li); scroll(); }
+function durationText(durationMs) { if(!Number.isFinite(durationMs)) return ''; return durationMs < 1000 ? ` ${durationMs}ms` : ` ${(durationMs/1000).toFixed(1)}秒`; }
+function completedStatus(status) { if(status==='failed') return '失敗'; if(status==='declined') return '拒否'; return '完了'; }
+function itemTitle(event) {
+  if(event.kind==='control') return `制御　${event.title}`;
+  if(event.kind==='command' || event.kind==='tool') return `実行　${event.title}`;
+  return event.title;
+}
+function startItem(event) {
+  if(!steps) beginActivity();
+  const li=document.createElement('li'); li.textContent=`${itemTitle(event)}　実行中`; steps.append(li);
+  if(event.id) activityItems.set(event.id,li);
+  scroll();
+}
+function completeItem(event) {
+  let li=event.id ? activityItems.get(event.id) : null;
+  if(li && (!steps || li.parentElement!==steps)) li=null;
+  if(!li) { if(!steps) beginActivity(); li=document.createElement('li'); steps.append(li); }
+  li.textContent=`${itemTitle(event)}　${completedStatus(event.status)}${durationText(event.durationMs)}`;
+  scroll();
+}
+function finish() { closeAnswer(); hideThinkingIndicator(); busy=false; steerReady=false; steerPending=''; setSendMode('send'); send.disabled=false; project.disabled=false; projectAdd.disabled=false; projectRename.disabled=!project.value; projectDelete.disabled=!project.value; filesUpload.disabled=false; if(ws?.readyState===WebSocket.OPEN) state.textContent='接続済み'; closeActivity(); activityItems=new Map(); prompt.focus(); }
+function contextText(used, limit) {
+  if(!Number.isFinite(used) || used<=0 || !Number.isFinite(limit) || limit<=0) return '';
+  return `コンテキスト ${used.toLocaleString('ja-JP')} / ${limit.toLocaleString('ja-JP')} tokens`;
+}
+function turnSummary(text,timestamp=new Date()) {
+  const line=document.createElement('div'); line.className='turn-summary';
+  const time=document.createElement('time'); time.className='message-time'; time.textContent=timestampText(timestamp);
+  const total=document.createElement('span'); total.textContent=text;
+  line.append(time,total); messages.append(line); keepThinkingIndicatorLast(); scroll();
+}
+function handle(event) {
+  if(event.type==='compaction.started') { state.textContent='整理中'; return; }
+  if(event.type==='compaction.completed') {
+    if(compactionLine) compactionLine.textContent=compactionResult(event);
+    else turnSummary(compactionResult(event),event.timestamp);
+    compactionPending=false; compactionLine=null; finish(); return;
+  }
+  if(event.type==='context.usage') {
+    const used=Number(event.usedTokens), limit=Number(event.contextWindow);
+    if(Number.isFinite(used) && used>0) contextUsed=used;
+    if(Number.isFinite(limit) && limit>0) contextWindow=limit;
+    const label=thinkingIndicator?.querySelector('.thinking-context');
+    if(label) label.textContent=contextText(contextUsed,contextWindow) || (contextWindow ? `コンテキスト: 確認中 / ${contextWindow.toLocaleString('ja-JP')} tokens` : 'コンテキスト: 確認中');
+    return;
+  }
+  if(event.type==='turn.queued'){ state.textContent='待機中'; return; }
+  if(event.type==='turn.started'){ state.textContent='処理中'; if(!activity) beginActivity(); return; }
+  if(event.type==='turn.ready'){ steerReady=true; if(busy && !steerPending) send.disabled=false; return; }
+  if(event.type==='turn.steer.accepted'){ closeActivity(); closeAnswer(); if(steerPending) bubble('user',steerPending); steerPending=''; send.disabled=false; state.textContent='処理中'; return; }
+  if(event.type==='turn.steer.rejected'){ prompt.value=steerPending; steerPending=''; send.disabled=false; state.textContent=`追加入力できません: ${event.message}`; return; }
+  if(event.type==='item.started') { startItem(event); return; }
+  if(event.type==='item.completed') { completeItem(event); return; }
+  if(event.type==='assistant.delta') {
+    if(!answer) { closeActivity(); answer=bubble('agent'); }
+    answer.dataset.rawText += event.text;
+    const text=answer.dataset.rawText;
+    if(/!\[[^\]\n]*\]\(((?:https?:\/\/|\/)[^\s)]+)\)/i.test(text)) renderMarkdown(answer,text);
+    else { answer.textContent=text; appendAnswerCopy(answer); }
+    scroll(); return;
+  }
+  if(event.type==='turn.interrupting') { state.textContent='停止中'; return; }
+  if(event.type==='turn.interrupted') { closeActivity(); turnSummary('停止しました'); finish(); loadFileTree(); return; }
+  if(event.type==='turn.completed') { const sec=(event.durationMs/1000).toFixed(1); closeActivity(); turnSummary(`合計: ${sec}秒 / ${event.outputTokens} tokens${contextText(contextUsed,contextWindow) ? ` / ${contextText(contextUsed,contextWindow)}` : ''}`); finish(); loadFileTree(); return; }
+  if(event.type==='error') { if(compactionPending && compactionLine) compactionLine.textContent='整理失敗'; compactionPending=false; compactionLine=null; bubble('agent', `エラー: ${typeof event.message==='string' ? event.message : JSON.stringify(event.message)}`); finish(); }
+}
+function compactionResult(event) {
+  if(event.status!=='completed') return '整理失敗: '+(event.message || '結果を確認できません');
+  const before=event.beforeTokens, after=event.afterTokens;
+  const usage=Number.isFinite(before) && Number.isFinite(after) ? ' / '+before.toLocaleString('ja-JP')+' → '+after.toLocaleString('ja-JP')+' tokens' : '';
+  return '整理完了'+usage+durationText(event.durationMs);
+}
+async function loadProjectHistory() {
+  if(!project.value) return;
+  messages.innerHTML='<div class="empty">会話履歴を読み込み中</div>';
+  try {
+    const response=await fetch(`/v1/projects/${encodeURIComponent(project.value)}/history`); if(!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data=await response.json(); messages.replaceChildren();
+    for(const item of data.items) {
+      if(item.type==='compaction.completed') turnSummary(compactionResult(item),item.timestamp);
+      if(item.type==='compaction.started') turnSummary('整理結果が未記録です',item.timestamp);
+      if(item.type==='message') bubble(item.role,item.text,item.timestamp);
+      if(item.type==='turn.completed') {
+        const duration=Number(item.durationMs), tokens=Number(item.usage?.output_tokens);
+        const parts=[]; if(Number.isFinite(duration)) parts.push(`${(duration/1000).toFixed(1)}秒`); if(Number.isFinite(tokens)) parts.push(`${tokens} tokens`);
+        const context=contextText(Number(item.usage?.total_tokens),Number(item.contextWindow)); if(context) parts.push(context);
+        turnSummary(`合計: ${parts.join(' / ')}`,item.timestamp);
+      }
+    }
+    if(!messages.children.length) messages.innerHTML='<div class="empty">会話履歴はありません</div>';
+  } catch(error) { messages.innerHTML=''; const empty=document.createElement('div'); empty.className='empty'; empty.textContent=`会話履歴を取得できません: ${error.message}`; messages.append(empty); }
+}
+project.addEventListener('change',async()=>{
+  clearFilePreview(); localStorage.setItem('tege2dev.project',project.value); resetNext=false; state.textContent='プロジェクト切替'; await Promise.all([loadFileTree(),loadProjectHistory()]); prompt.focus();
+});
+// Lucide folder and file icons (ISC).
+const treeIconPaths={
+  folder:['M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z'],
+  file:['M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z','M14 2v4a2 2 0 0 0 2 2h4']
+};
+function fileTreeIcon(kind) {
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.classList.add('tree-icon'); svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('aria-hidden','true');
+  for(const d of treeIconPaths[kind]) {
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttribute('d',d); svg.append(path);
+  }
+  return svg;
+}
+let selectedUploadDirectory='';
+function selectUploadDirectory(path,summary) {
+  selectedUploadDirectory=path;
+  uploadDirectory.textContent=path ? `/${path}` : '/';
+  uploadDirectory.title=`アップロード先: ${uploadDirectory.textContent}`;
+  document.querySelectorAll('.directory-entry.active').forEach(item=>item.classList.remove('active'));
+  if(summary) summary.classList.add('active');
+}
+function renderFileTree(entries,parent,projectName) {
+  for(const entry of entries) {
+    if(entry.kind==='directory') {
+      const details=document.createElement('details'); details.open=entry.path==='';
+      const summary=document.createElement('summary'); summary.className='directory-entry';
+      if(entry.path===selectedUploadDirectory) summary.classList.add('active');
+      const name=document.createElement('span'); name.textContent=entry.name;
+      const mtime=document.createElement('span'); mtime.className='tree-mtime'; mtime.textContent=entry.mtime||'';
+      summary.append(fileTreeIcon('folder'),name,mtime);
+      summary.addEventListener('click',()=>selectUploadDirectory(entry.path,summary));
+      details.append(summary);
+      let loaded=Array.isArray(entry.children), loading=false;
+      if(loaded) renderFileTree(entry.children,details,projectName);
+      details.addEventListener('toggle',async()=>{
+        if(!details.open || loaded || loading) return;
+        loading=true;
+        const status=document.createElement('div'); status.className='empty'; status.textContent='読み込み中'; details.append(status);
+        try {
+          const url=`/v1/projects/${encodeURIComponent(projectName)}/files?directory=${encodeURIComponent(entry.path)}`;
+          const response=await fetch(url); if(!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data=await response.json();
+          if(project.value!==projectName || !details.isConnected) return;
+          status.remove(); renderFileTree(data.entries,details,projectName); loaded=true;
+          if(!data.entries.length) { status.textContent='ファイルがありません'; details.append(status); }
+        } catch(error) { status.textContent=`取得できません: ${error.message}`; }
+        finally { loading=false; }
+      });
+      parent.append(details);
+    } else {
+      const row=document.createElement('button'); row.type='button'; row.className='file-entry'; row.title=entry.path;
+      const name=document.createElement('span'); name.textContent=entry.name;
+      const mtime=document.createElement('span'); mtime.className='tree-mtime'; mtime.textContent=entry.mtime||'';
+      row.append(fileTreeIcon('file'),name,mtime);
+      row.addEventListener('click',()=>{ document.querySelectorAll('.file-entry.active').forEach(item=>item.classList.remove('active')); row.classList.add('active'); openProjectFile(entry.path,entry.size); }); parent.append(row);
+    }
+  }
+}
+let fileImageUrl='', previewRequestId=0, previewFilePath='', previewController=null;
+function filePreviewKind(path) {
+  const name=path.split('/').pop().toLowerCase(), ext=name.split('.').pop();
+  if(['png','jpg','jpeg','gif','webp','bmp','avif','ico'].includes(ext)) return 'image';
+  if(['txt','md','markdown','json','jsonl','yaml','yml','toml','ini','cfg','conf','csv','tsv','xml','html','htm','css','scss','less','js','jsx','ts','tsx','py','pyi','c','h','cpp','hpp','cc','cxx','rs','go','java','kt','kts','swift','sh','bash','zsh','ps1','sql','log','cmake','gradle','properties','svg','bat','cmd','rb','php','vue','svelte','dart','r','tex'].includes(ext) || ['dockerfile','containerfile','makefile','readme','license','.gitignore','.dockerignore','.env'].includes(name)) return 'text';
+  return '';
+}
+function formatFileSize(size) {
+  if(!Number.isFinite(size) || size<0) return 'サイズ不明';
+  const units=['B','KiB','MiB','GiB','TiB']; let index=0, value=size;
+  while(value>=1024 && index<units.length-1) { value/=1024; index++; }
+  return `${index ? value.toFixed(1) : value} ${units[index]}`;
+}
+async function openProjectFile(path, size) {
+  if(previewController) previewController.abort();
+  previewController=null;
+  const requestId=++previewRequestId, projectName=project.value;
+  previewFilePath=path; filePreviewDownload.hidden=false;
+  $('file-preview-size').textContent=formatFileSize(size);
+  filePreviewTitle.textContent=path; filePreviewEmpty.hidden=true; fileContent.textContent='読み込み中'; fileContent.hidden=false;
+  filePreviewTitle.title=path;
+  fileImage.hidden=true; fileImage.removeAttribute('src'); fileImage.alt='';
+  if(fileImageUrl) { URL.revokeObjectURL(fileImageUrl); fileImageUrl=''; }
+  const kind=filePreviewKind(path);
+  if(!kind) { fileContent.textContent='この形式はプレビューに対応していません。ダウンロードできます。'; return; }
+  if(size>64*1024*1024) { fileContent.textContent='サイズが大きいためプレビューできません。ダウンロードできます。'; return; }
+  const controller=new AbortController(); previewController=controller;
+  try {
+    const encoded=path.split('/').map(encodeURIComponent).join('/');
+    const url=`/v1/projects/${encodeURIComponent(projectName)}/files/${encoded}`;
+    const response=await fetch(`${url}?t=${Date.now()}`, {cache:'no-store',signal:controller.signal});
+    if(requestId!==previewRequestId) return;
+    if(response.status===413) { fileContent.textContent='サイズが大きいためプレビューできません。ダウンロードできます。'; return; }
+    if(!response.ok) throw new Error(`HTTP ${response.status}`);
+    if(kind==='image') {
+      const blob=await response.blob(); if(requestId!==previewRequestId) return;
+      fileImageUrl=URL.createObjectURL(blob); fileImage.src=fileImageUrl; fileImage.alt=path; fileImage.hidden=false; fileContent.hidden=true;
+    } else {
+      const bytes=new Uint8Array(await response.arrayBuffer()); if(requestId!==previewRequestId) return;
+      if(bytes.includes(0)) { fileContent.textContent='バイナリを含むためプレビューできません。ダウンロードできます。'; return; }
+      const content=new TextDecoder().decode(bytes);
+      fileContent.textContent=content; fileContent.hidden=false; fileImage.hidden=true;
+    }
+  } catch(error) { if(requestId===previewRequestId) fileContent.textContent=`ファイルを取得できません: ${error.message}`; }
+}
+function clearFilePreview() {
+  if(previewController) previewController.abort();
+  previewController=null;
+  previewRequestId++;
+  previewFilePath=''; filePreviewDownload.hidden=true;
+  $('file-preview-size').textContent=''; filePreviewTitle.title='';
+  if(fileImageUrl) URL.revokeObjectURL(fileImageUrl); fileImageUrl=''; fileImage.removeAttribute('src'); fileImage.hidden=true;
+  fileContent.textContent=''; fileContent.hidden=true; filePreviewTitle.textContent='プレビュー'; filePreviewEmpty.hidden=false;
+  document.querySelectorAll('.file-entry.active').forEach(item=>item.classList.remove('active'));
+}
+$('file-preview-close').addEventListener('click',clearFilePreview);
+filePreviewDownload.addEventListener('click',()=>{
+  if(!project.value || !previewFilePath) return;
+  const encoded=previewFilePath.split('/').map(encodeURIComponent).join('/');
+  const link=document.createElement('a');
+  link.href=`/v1/projects/${encodeURIComponent(project.value)}/files/${encoded}?download=1`;
+  link.download=previewFilePath.split('/').pop();
+  document.body.append(link); link.click(); link.remove();
+});
+function setFilePaneWidth(value) {
+  const maximum=Math.min(720,window.innerWidth*.62); const width=Math.max(240,Math.min(maximum,Math.round(value)));
+  document.querySelector('main').style.setProperty('--file-pane-width',`${width}px`); localStorage.setItem('tege2dev.filePaneWidth',String(width));
+}
+const savedFilePaneWidth=Number(localStorage.getItem('tege2dev.filePaneWidth'));
+if(Number.isFinite(savedFilePaneWidth) && savedFilePaneWidth>0) setFilePaneWidth(savedFilePaneWidth);
+panelResizer.addEventListener('pointerdown',event=>{
+  panelResizer.classList.add('dragging'); panelResizer.setPointerCapture(event.pointerId); document.body.style.userSelect='none';
+});
+panelResizer.addEventListener('pointermove',event=>{ if(panelResizer.hasPointerCapture(event.pointerId)) setFilePaneWidth(event.clientX); });
+panelResizer.addEventListener('pointerup',event=>{ if(panelResizer.hasPointerCapture(event.pointerId)) panelResizer.releasePointerCapture(event.pointerId); panelResizer.classList.remove('dragging'); document.body.style.userSelect=''; });
+panelResizer.addEventListener('keydown',event=>{
+  if(event.key!=='ArrowLeft' && event.key!=='ArrowRight') return; event.preventDefault();
+  const current=parseFloat(getComputedStyle(document.querySelector('main')).getPropertyValue('--file-pane-width')) || 420;
+  setFilePaneWidth(current+(event.key==='ArrowRight'?20:-20));
+});
+let fileTreeFraction=0.42;
+const savedFileTreeFraction=localStorage.getItem('tege2dev.fileTreeFraction');
+if(savedFileTreeFraction!==null) {
+  const value=Number(savedFileTreeFraction);
+  if(Number.isFinite(value) && value>0 && value<1) fileTreeFraction=value;
+}
+function fileTreeBounds() {
+  const available=filePanel.clientHeight-50;
+  const minimum=Math.min(90,available/2);
+  return {available,minimum,maximum:available-minimum};
+}
+function applyFileTreeFraction() {
+  const {available,minimum,maximum}=fileTreeBounds(); if(available<=0) return;
+  const height=Math.max(minimum,Math.min(maximum,Math.round(available*fileTreeFraction)));
+  filePanel.style.setProperty('--file-tree-height',`${height}px`);
+  fileHeightResizer.setAttribute('aria-valuemin',String(Math.round(minimum)));
+  fileHeightResizer.setAttribute('aria-valuemax',String(Math.round(maximum)));
+  fileHeightResizer.setAttribute('aria-valuenow',String(height));
+}
+function setFileTreeHeight(value) {
+  const {available,minimum,maximum}=fileTreeBounds(); if(available<=0) return;
+  fileTreeFraction=Math.max(minimum,Math.min(maximum,Math.round(value)))/available;
+  localStorage.setItem('tege2dev.fileTreeFraction',String(fileTreeFraction));
+  applyFileTreeFraction();
+}
+fileHeightResizer.addEventListener('pointerdown',event=>{
+  fileHeightResizer.classList.add('dragging'); fileHeightResizer.setPointerCapture(event.pointerId); document.body.style.userSelect='none';
+});
+fileHeightResizer.addEventListener('pointermove',event=>{
+  if(fileHeightResizer.hasPointerCapture(event.pointerId)) setFileTreeHeight(event.clientY-filePanel.getBoundingClientRect().top-44);
+});
+fileHeightResizer.addEventListener('pointerup',event=>{
+  if(fileHeightResizer.hasPointerCapture(event.pointerId)) fileHeightResizer.releasePointerCapture(event.pointerId);
+});
+fileHeightResizer.addEventListener('pointercancel',event=>{
+  if(fileHeightResizer.hasPointerCapture(event.pointerId)) fileHeightResizer.releasePointerCapture(event.pointerId);
+});
+fileHeightResizer.addEventListener('lostpointercapture',()=>{
+  fileHeightResizer.classList.remove('dragging'); document.body.style.userSelect='';
+});
+fileHeightResizer.addEventListener('keydown',event=>{
+  if(event.key!=='ArrowUp' && event.key!=='ArrowDown') return; event.preventDefault();
+  setFileTreeHeight(fileTree.clientHeight+(event.key==='ArrowDown'?20:-20));
+});
+window.addEventListener('resize',applyFileTreeFraction);
+async function loadFileTree() {
+  if(!project.value) return;
+  const projectName=project.value;
+  selectUploadDirectory('',null);
+  filesRefresh.disabled=true; fileTree.innerHTML='<div class="empty">読み込み中</div>';
+  try {
+    const response=await fetch(`/v1/projects/${encodeURIComponent(projectName)}/files`); if(!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data=await response.json(); if(project.value!==projectName) return;
+    fileTree.replaceChildren();
+    renderFileTree([{kind:'directory',name:projectName,path:'',children:data.entries}],fileTree,projectName);
+    if(!data.entries.length) { const empty=document.createElement('div'); empty.className='empty'; empty.textContent='ファイルがありません'; fileTree.querySelector('details').append(empty); }
+  } catch(error) { if(project.value!==projectName) return; fileTree.innerHTML=''; const empty=document.createElement('div'); empty.className='empty'; empty.textContent=`取得できません: ${error.message}`; fileTree.append(empty); }
+  finally { filesRefresh.disabled=false; }
+}
+async function loadProjects(preferred='') {
+  const previousProject=project.value;
+  const response=await fetch('/v1/projects'); if(!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data=await response.json();
+  requestAnimationFrame(applyFileTreeFraction);
+  const selected=preferred || project.value || localStorage.getItem('tege2dev.project') || '';
+  project.replaceChildren();
+  for(const name of data.projects) { const option=document.createElement('option'); option.value=name; option.textContent=name; project.append(option); }
+  if(data.projects.includes(selected)) project.value=selected;
+  if(project.value!==previousProject) clearFilePreview();
+  if(project.value) localStorage.setItem('tege2dev.project',project.value);
+  const empty=data.projects.length===0; send.disabled=empty; prompt.disabled=empty; projectDelete.disabled=empty; projectRename.disabled=empty || busy;
+  state.textContent=empty?'プロジェクトなし':'接続中';
+  if(empty) { localStorage.removeItem('tege2dev.project'); messages.innerHTML='<div class="empty">プロジェクトがありません</div>'; fileTree.innerHTML='<div class="empty">ファイルがありません</div>'; }
+  else await Promise.all([loadFileTree(),loadProjectHistory()]);
+}
+filesRefresh.addEventListener('click',loadFileTree);
+filesUpload.addEventListener('click',()=>{ if(project.value && !busy) fileUploadInput.click(); });
+function uploadProjectFiles(url,formData,onProgress) {
+  return new Promise((resolve,reject)=>{
+    const request=new XMLHttpRequest(); request.open('POST',url);
+    request.upload.addEventListener('progress',event=>{ if(event.lengthComputable) onProgress(Math.round(event.loaded/event.total*100)); });
+    request.addEventListener('load',()=>{
+      if(request.status>=200 && request.status<300) resolve(request.responseText);
+      else reject(new Error(request.responseText || `HTTP ${request.status}`));
+    });
+    request.addEventListener('error',()=>reject(new Error('通信に失敗しました')));
+    request.addEventListener('abort',()=>reject(new Error('アップロードを中止しました')));
+    request.send(formData);
+  });
+}
+fileUploadInput.addEventListener('change',async()=>{
+  if(!project.value || !fileUploadInput.files.length) return;
+  filesUpload.disabled=true; projectRename.disabled=true; uploadProgress.value=0; uploadProgress.hidden=false; state.textContent='アップロード中 0%';
+  const formData=new FormData(); for(const file of fileUploadInput.files) formData.append('file',file,file.name);
+  try {
+    const query=selectedUploadDirectory ? `?directory=${encodeURIComponent(selectedUploadDirectory)}` : '';
+    await uploadProjectFiles(`/v1/projects/${encodeURIComponent(project.value)}/files${query}`,formData,percent=>{ uploadProgress.value=percent; state.textContent=`アップロード中 ${percent}%`; });
+    await loadFileTree(); state.textContent='アップロード完了';
+  } catch(error) { state.textContent=`アップロード失敗: ${error.message}`; }
+  finally { fileUploadInput.value=''; uploadProgress.hidden=true; filesUpload.disabled=busy; projectRename.disabled=busy || !project.value; }
+});
+projectAdd.addEventListener('click',()=>{ renamingProject=null; projectDialog.querySelector('h2').textContent='プロジェクトを作成'; $('project-create').textContent='作成'; projectName.value=''; projectError.textContent=''; projectDialog.showModal(); projectName.focus(); });
+projectRename.addEventListener('click',()=>{
+  if(!project.value || busy) return;
+  renamingProject=project.value; projectDialog.querySelector('h2').textContent='プロジェクト名を変更'; $('project-create').textContent='変更';
+  projectName.value=renamingProject; projectError.textContent=''; projectDialog.showModal(); projectName.focus(); projectName.select();
+});
+$('project-cancel').addEventListener('click',()=>projectDialog.close());
+$('project-create-form').addEventListener('submit',async event=>{
+  event.preventDefault(); const name=projectName.value.trim(); if(!name) return;
+  $('project-create').disabled=true; projectError.textContent='';
+  try {
+    if(busy) throw new Error('作業中はプロジェクト名を変更できません');
+    const url=renamingProject ? `/v1/projects/${encodeURIComponent(renamingProject)}/rename` : '/v1/projects';
+    const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    if(!response.ok) { const data=await response.json().catch(()=>null); throw new Error(data?.error?.message || `HTTP ${response.status}`); }
+    projectDialog.close(); resetNext=false; await loadProjects(name); prompt.focus();
+  } catch(error) { projectError.textContent=error.message; }
+  finally { $('project-create').disabled=false; }
+});
+projectDelete.addEventListener('click',()=>{
+  if(!project.value || busy) return;
+  projectDeleteMessage.textContent=`「${project.value}」のファイルと会話の紐付けを削除します。`;
+  projectDeleteError.textContent=''; projectDeleteDialog.showModal();
+});
+$('project-delete-cancel').addEventListener('click',()=>projectDeleteDialog.close());
+$('project-delete-confirm').addEventListener('click',async()=>{
+  const name=project.value; if(!name) return;
+  $('project-delete-confirm').disabled=true; projectDeleteError.textContent='';
+  try {
+    const response=await fetch(`/v1/projects/${encodeURIComponent(name)}`,{method:'DELETE'});
+    if(!response.ok) { const data=await response.json().catch(()=>null); throw new Error(data?.error?.message || `HTTP ${response.status}`); }
+    projectDeleteDialog.close(); localStorage.removeItem('tege2dev.project'); await loadProjects(); prompt.focus();
+  } catch(error) { projectDeleteError.textContent=error.message; }
+  finally { $('project-delete-confirm').disabled=false; }
+});
+function compactProject() {
+  if(busy || !project.value || ws?.readyState!==WebSocket.OPEN) return;
+  if(resetNext) { turnSummary('圧縮する会話履歴がありません'); return; }
+  busy=true; compactionPending=true; steerReady=false; stop.disabled=false; setSendMode('working');
+  project.disabled=true; projectAdd.disabled=true; projectRename.disabled=true; projectDelete.disabled=true; filesUpload.disabled=true;
+  closeActivity(); closeAnswer();
+  compactionLine=document.createElement('div'); compactionLine.className='turn-summary'; compactionLine.setAttribute('role','status'); compactionLine.textContent='整理中';
+  messages.append(compactionLine); showThinkingIndicator(); scroll(); state.textContent='整理中';
+  ws.send(JSON.stringify({sessionId:projectSession(),project:project.value,compact:true}));
+}
+stop.addEventListener('click',()=>{
+  if(!busy || stop.disabled || ws?.readyState!==WebSocket.OPEN) return;
+  stop.disabled=true; state.textContent='停止要求中';
+  ws.send(JSON.stringify({type:'turn.interrupt'}));
+});
+$('form').addEventListener('submit', event => {
+  event.preventDefault();
+  hideCommandMenu();
+  const text=prompt.value.trim();
+  if(!text || !ws || ws.readyState!==WebSocket.OPEN) return;
+  if(busy) {
+    if(!steerReady || steerPending) return;
+    steerPending=text; send.disabled=true; state.textContent='追加入力を送信中';
+    ws.send(JSON.stringify({type:'turn.steer',text})); prompt.value=''; return;
+  }
+  if(text==='/new') {
+    resetNext=true;
+    messages.replaceChildren(); prompt.value=''; state.textContent='新しいセッション'; prompt.focus();
+    return;
+  }
+  if(text==='/help') {
+    bubble('agent','/new — 選択中のプロジェクトの会話をリセットします。ファイルは削除しません。\n/compact — 選択中のプロジェクトの会話を圧縮します。結果は履歴に残ります。\n/help — コマンド一覧を表示します。');
+    prompt.value=''; prompt.focus(); return;
+  }
+  if(text==='/compact') {
+    prompt.value=''; compactProject(); return;
+  }
+  bubble('user',text); busy=true; steerReady=false; stop.disabled=false; contextUsed=null; contextWindow=null; showThinkingIndicator(); setSendMode('working'); project.disabled=true; projectAdd.disabled=true; projectRename.disabled=true; projectDelete.disabled=true; filesUpload.disabled=true; prompt.value='';
+  ws.send(JSON.stringify({sessionId:projectSession(),text,reset:resetNext,project:project.value})); resetNext=false;
+});
+prompt.addEventListener('input',updateCommandMenu);
+prompt.addEventListener('blur',hideCommandMenu);
+prompt.addEventListener('keydown',event=>{
+  if(event.isComposing) return;
+  if(!commandMenu.hidden) {
+    if(event.key==='ArrowDown' || event.key==='ArrowUp') {
+      event.preventDefault(); commandIndex=(commandIndex+(event.key==='ArrowDown'?1:-1)+commandMatches.length)%commandMatches.length; renderCommandMenu(); return;
+    }
+    if(event.key==='Escape') { event.preventDefault(); hideCommandMenu(); return; }
+    if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); chooseCommand(commandIndex); return; }
+  }
+  if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); $('form').requestSubmit(); }
+});
+async function initialize() {
+  try {
+    await loadProjects();
+    connect(); prompt.focus();
+  } catch(error) { state.textContent=`初期化エラー: ${error.message}`; send.disabled=true; prompt.disabled=true; }
+}
+initialize();
+</script>
+</body>
+</html>

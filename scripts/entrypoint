@@ -1,0 +1,27 @@
+#!/bin/bash
+set -euo pipefail
+
+core_port="${CODEX_AGENT_CORE_PORT:-8090}"
+web_port="${PORT:-8091}"
+
+PORT="$core_port" python3 /data/web/llm_settings.py --exec /usr/local/bin/codex-agent-server &
+core_pid=$!
+
+CODEX_AGENT_CORE_URL="http://127.0.0.1:$core_port" \
+PORT="$web_port" \
+python3 /data/web/server.py &
+web_pid=$!
+
+stop_processes() {
+    kill "$web_pid" "$core_pid" 2>/dev/null || true
+}
+
+trap stop_processes TERM INT
+
+set +e
+wait -n "$core_pid" "$web_pid"
+status=$?
+set -e
+stop_processes
+wait "$web_pid" "$core_pid" 2>/dev/null || true
+exit "$status"

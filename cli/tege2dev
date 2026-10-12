@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+"""Plain terminal client for the development agent's existing Web APIs."""
+
+import argparse
+import asyncio
+import json
+import os
+import signal
+import sys
+from urllib.parse import quote, urlsplit
+
+try:
+    import aiohttp
+except ImportError:
+    sys.exit("aiohttpが必要です: python3 -m pip install aiohttp")
+
+
+def display(text):
+    # Keep newlines and tabs, but do not execute terminal control sequences.
+    return "".join(c for c in str(text) if c in "\n\t" or (c.isprintable()))
+
+
+class Client:
+    def __init__(self, session, base_url):
+        self.session = session
+        self.base_url = base_url.rstrip("/")
+
+    async def get(self, path):
+        async with self.session.get(
+            self.base_url + path, timeout=aiohttp.ClientTimeout(total=30)
+        ) as response:
+            response.raise_for_status()
+            return await response.json()
+
+    async def projects(self):
+        data = await self.get("/v1/projects")
+        if not data.get("enabled"):
+            raise RuntimeError("接続先では開発用プロジェクト機能が有効になっていません")
+        return data["projects"]
+
+    async def history(self, project):
+        return await self.get("/v1/projects/" + quote(project, safe="") + "/history")
+
+    async def turn(self, project, text):
+        # The server resolves the current canonical conversation ID and workspace.
+        # Do not derive a Core thread ID or reuse a cached project session mapping.
+        async with self.session.ws_connect(
+            self.base_url + "/v1/agent/ws", max_msg_size=16 * 1024 * 1024
+        ) as ws:
+            await ws.send_json({
+                "sessionId": "project:" + project,
+                "project": project,
+                "text": text,
+                "reset": False,
+            })
+            output = Output()
+            stopping = False
+            stop_task = None
+            loop = asyncio.get_running_loop()
+            previous_handler = signal.getsignal(signal.SIGINT)
+
+            async def interrupt():
+                try:
+                    await ws.send_json({"type": "turn.interrupt"})
+                except (aiohttp.ClientError, ConnectionError):
+                    await ws.close()
+
+            def request_interrupt():
+                nonlocal stopping, stop_task
+                if stopping:
+                    loop.create_task(ws.close())
+                    return
+                stopping = True
+                output.line("停止を要求しています…")
+                stop_task = loop.create_task(interrupt())
+
+            def on_interrupt(_signum, _frame):
+                loop.call_soon_threadsafe(request_interrupt)
+
+            signal.signal(signal.SIGINT, on_interrupt)
+            try:
+                async for message in ws:
+                    if message.type == aiohttp.WSMsgType.TEXT:
+                        result = output.event(json.loads(message.data))
+                        if result is not None:
+                            return result
+                    elif message.type == aiohttp.WSMsgType.ERROR:
+                        raise RuntimeError("接続エラー: " + str(ws.exception()))
+                raise RuntimeError("完了通知を受け取る前に接続が切れました。/historyで履歴を確認できます")
+            finally:
+                signal.signal(signal.SIGINT, previous_handler)
+                if stop_task is not None:
+                    await asyncio.gather(stop_task, return_exceptions=True)
+                output.end_line()
+
+
+class Output:
+    def __init__(self):
+        self.answer_open = False
+
+    def end_line(self):
+        if self.answer_open:
+            print(flush=True)
+            self.answer_open = False
+
+    def line(self, text):
+        self.end_line()
+        print(display(text), flush=True)
+
+    def event(self, event):
+        kind = event.get("type")
+        if kind == "assistant.delta":
+            if not self.answer_open:
+                print("エージェント> ", end="", flush=True)
+                self.answer_open = True
+            print(display(event.get("text", "")), end="", flush=True)
+        elif kind == "turn.queued":
+            self.line("[待機中]")
+        elif kind == "item.started":
+            self.line("[処理] " + event.get("title", event.get("kind", "")))
+        elif kind == "item.completed" and event.get("status") in {"failed", "declined"}:
+            self.line("[処理失敗] " + event.get("title", ""))
+        elif kind == "turn.interrupting":
+            self.line("[停止中]")
+        elif kind == "turn.interrupted":
+            self.line("[停止しました]")
+            return True
+        elif kind == "turn.completed":
+            seconds = event.get("durationMs", 0) / 1000
+            self.line(f"[完了 {seconds:.1f}秒 / {event.get('outputTokens', 0)} tokens]")
+            return True
+        elif kind == "error":
+            self.line("エラー: " + str(event.get("message", "不明なエラー")))
+            return False
+        return None
+
+
+async def select_project(client, requested=None):
+    names = await client.projects()
+    if not names:
+        raise RuntimeError("プロジェクトがありません。開発用Web画面で作成してください")
+    if requested is not None:
+        if requested not in names:
+            raise RuntimeError("プロジェクトが見つかりません: " + requested)
+        return requested
+    print("プロジェクト:")
+    for index, name in enumerate(names, 1):
+        print(f"{index}. {display(name)}")
+    while True:
+        value = input("選択> ").strip()
+        if value in names:
+            return value
+        if value.isdecimal() and 1 <= int(value) <= len(names):
+            return names[int(value) - 1]
+        print("一覧の番号かプロジェクト名を入力してください")
+
+
+async def show_history(client, project):
+    data = await client.history(project)
+    found = False
+    for item in data.get("items", []):
+        if item.get("type") != "message":
+            continue
+        found = True
+        label = "あなた" if item.get("role") == "user" else "エージェント"
+        print(f"{label}> {display(item.get('text', ''))}")
+    if not found:
+        print("会話履歴はありません")
+
+
+async def run(args):
+    headers = {}
+    if os.environ.get("CODEX_DEV_API_KEY"):
+        headers["Authorization"] = "Bearer " + os.environ["CODEX_DEV_API_KEY"]
+    # Long model reasoning must not be cut off by an overall/read timeout.
+    timeout = aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=None)
+    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+        client = Client(session, args.url)
+        project = await select_project(client, args.project)
+        print("プロジェクト: " + display(project))
+        if args.message is not None:
+            return 0 if await client.turn(project, args.message) else 1
+        print("/history: 履歴  /projects: 切替  /exit: 終了  処理中のCtrl+C: 停止")
+        while True:
+            try:
+                text = input("\nあなた> ").strip()
+                if not text:
+                    continue
+                if text == "/exit":
+                    return 0
+                if text == "/history":
+                    await show_history(client, project)
+                elif text == "/projects":
+                    project = await select_project(client)
+                    print("プロジェクト: " + display(project))
+                else:
+                    # Revalidate before sending, e.g. after Web-side rename/delete.
+                    await select_project(client, project)
+                    await client.turn(project, text)
+            except (aiohttp.ClientError, OSError, ValueError, RuntimeError) as error:
+                print("エラー: " + display(error), file=sys.stderr)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="開発エージェントのターミナルチャット")
+    parser.add_argument("--url", default=os.environ.get("CODEX_DEV_URL", "http://127.0.0.1:8091"), help="開発用Web画面のURL（環境変数: CODEX_DEV_URL）")
+    parser.add_argument("--project", help="プロジェクト名。省略時は一覧から選択")
+    parser.add_argument("--message", help="1つの指示を送信して終了")
+    args = parser.parse_args()
+    parsed = urlsplit(args.url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.query or parsed.fragment:
+        parser.error("--urlには開発用Web画面のhttp/https URLを指定してください")
+    if args.message is not None and not args.message.strip():
+        parser.error("--messageには空でない指示を指定してください")
+    try:
+        return asyncio.run(run(args))
+    except (KeyboardInterrupt, EOFError):
+        print("\n終了しました")
+        return 0
+    except (aiohttp.ClientError, OSError, ValueError, RuntimeError) as error:
+        print("エラー: " + display(error), file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

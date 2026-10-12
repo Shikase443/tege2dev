@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LLM設定 | Tege2DeV</title>
+  <style>
+    :root { --bg:#171b1e; --panel:#202629; --text:#edf2f3; --muted:#a7b5bb; --line:#3c464b; --accent:#83d3bb; --header:#253036; color-scheme:dark; }
+    :root[data-theme="amber"] { --bg:#201e1b; --panel:#292621; --text:#f0ebe2; --muted:#b9b0a3; --line:#49433b; --accent:#e7b65a; --header:#302b26; }
+    :root[data-theme="light"] { --bg:#f5f7f9; --panel:#fff; --text:#202b35; --muted:#536778; --line:#ccd6de; --accent:#245b7a; --header:#e3ebf0; color-scheme:light; }
+    :root[data-theme="sumi"] { --bg:#f3f1ec; --panel:#fff; --text:#292928; --muted:#69675f; --line:#cfccc5; --accent:#ba4439; --header:#e9e5df; color-scheme:light; }
+    * { box-sizing:border-box; letter-spacing:0; }
+    body { margin:0; background:var(--bg); color:var(--text); font:14px/1.6 system-ui,sans-serif; }
+    header { min-height:64px; display:flex; align-items:center; gap:28px; padding:12px 24px; border-bottom:1px solid var(--line); background:var(--header); }
+    header a { color:var(--text); text-decoration:none; }
+    .brand { font-size:22px; font-weight:800; font-style:italic; }
+    main { max-width:920px; margin:auto; padding:28px 24px 60px; }
+    h1 { font-size:22px; margin:0 0 24px; }
+    h2 { font-size:17px; margin:0; }
+    section { padding:20px 0 28px; border-top:1px solid var(--line); }
+    .section-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+    .fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px 24px; }
+    label { display:flex; flex-direction:column; gap:6px; min-width:0; }
+    .wide { grid-column:1/-1; }
+    .toggle { flex-direction:row; align-items:center; gap:9px; }
+    input { font:inherit; color:inherit; background:var(--panel); border:1px solid var(--line); border-radius:4px; min-width:0; width:100%; padding:8px 10px; }
+    input[type="checkbox"] { width:16px; height:16px; accent-color:var(--accent); }
+    input:focus { outline:2px solid var(--accent); outline-offset:1px; }
+    .actions { display:flex; align-items:center; gap:18px; border-top:1px solid var(--line); padding-top:20px; }
+    button { display:flex; align-items:center; gap:7px; padding:9px 16px; font:inherit; border:1px solid var(--accent); border-radius:4px; background:var(--accent); color:var(--bg); cursor:pointer; }
+    button:disabled { opacity:.5; cursor:wait; }
+    #status { color:var(--muted); overflow-wrap:anywhere; }
+    #status[data-error="true"] { color:#e96a6a; }
+    .connection-test { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:18px; }
+    .connection-test span { overflow-wrap:anywhere; min-width:0; }
+    .connection-test span[data-error="true"] { color:#e96a6a; }
+    @media(max-width:600px) { header { padding-inline:16px; gap:18px; } main { padding:20px 16px; } .fields { grid-template-columns:1fr; } .actions { align-items:flex-start; } }
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="/">Tege2DeV</a><a href="/">チャット</a><span>LLM設定</span></header>
+  <main>
+    <h1>LLM設定</h1>
+    <form id="llm-form">
+      <section>
+        <div class="section-head"><h2>メインLLM</h2></div>
+        <div class="fields">
+          <label class="wide">接続先ベースURL<input id="main-base_url" type="url" required></label>
+          <label class="wide">モデル名<input id="main-model" required></label>
+          <label>コンテキスト長（tokens）<input id="main-context_window" type="number" min="1" step="1" required></label>
+          <label>最大出力（tokens）<input id="main-max_output_tokens" type="number" min="1" step="1" required></label>
+          <label>Temperature<input id="main-temperature" type="number" min="0" max="2" step="any" placeholder="サーバー既定値"></label>
+          <label>無通信タイムアウト（ms、0＝無制限）<input id="main-stream_idle_timeout_ms" type="number" min="0" step="1" placeholder="Core既定値"></label>
+        </div>
+        <div class="connection-test"><button type="button" data-test="main" disabled>接続テスト</button><span id="main-test-status" role="status"></span></div>
+      </section>
+      <div class="actions"><button id="save" type="submit" disabled>保存</button><span id="status" role="status">読み込み中</span></div>
+    </form>
+  </main>
+  <script>
+    document.documentElement.dataset.theme=localStorage.getItem('tege2dev.theme') || 'mint';
+    const form=document.getElementById('llm-form'), save=document.getElementById('save'), status=document.getElementById('status');
+    let settings;
+    function showState(data, saved=false) {
+      status.dataset.error='false';
+      status.textContent=data.restart_required ? '保存済み・コンテナ再起動待ち' : (saved ? '保存済み・変更なし' : '反映済み');
+    }
+    async function request(options) {
+      const response=await fetch('/api/llm-settings',{cache:'no-store',...options});
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      return data;
+    }
+    async function load() {
+      try {
+        const data=await request(); settings=data.settings;
+        for(const [group, values] of Object.entries(settings)) for(const [key,value] of Object.entries(values)) {
+          const input=document.getElementById(`${group}-${key}`);
+          if(input.type==='checkbox') input.checked=value; else input.value=value ?? '';
+        }
+        showState(data); save.disabled=false;
+        document.querySelectorAll('[data-test]').forEach(button=>button.disabled=false);
+      } catch(error) { status.dataset.error='true'; status.textContent=error.message; }
+    }
+    form.addEventListener('submit',async event=>{
+      event.preventDefault(); save.disabled=true;
+      const next={};
+      for(const [group, values] of Object.entries(settings)) {
+        next[group]={};
+        for(const key of Object.keys(values)) {
+          const input=document.getElementById(`${group}-${key}`);
+          next[group][key]=input.type==='checkbox' ? input.checked : input.type==='number' ? (input.value==='' ? null : Number(input.value)) : input.value;
+        }
+      }
+      try { const data=await request({method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(next)}); settings=data.settings; showState(data,true); }
+      catch(error) { status.dataset.error='true'; status.textContent=error.message; }
+      finally { save.disabled=false; }
+    });
+    document.querySelectorAll('[data-test]').forEach(button=>button.addEventListener('click',async ()=>{
+      const group=button.dataset.test, result=document.getElementById(group+'-test-status');
+      const url=document.getElementById(group+'-base_url'), model=document.getElementById(group+'-model');
+      if(!url.reportValidity() || !model.reportValidity()) return;
+      button.disabled=true; result.dataset.error='false'; result.textContent='接続テスト中';
+      try {
+        const response=await fetch('/api/llm-settings/test',{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({group,base_url:url.value,model:model.value})
+        });
+        const data=await response.json();
+        if(!response.ok) throw new Error(data.error || 'HTTP '+response.status);
+        result.textContent='接続成功（'+data.elapsed_seconds+'秒）';
+      } catch(error) { result.dataset.error='true'; result.textContent=error.message; }
+      finally { button.disabled=false; }
+    }));
+    load();
+  </script>
+</body>
+</html>

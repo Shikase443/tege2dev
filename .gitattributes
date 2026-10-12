@@ -1,0 +1,14 @@
+* text=auto
+*.rs text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+Dockerfile text eol=lf
+scripts/entrypoint text eol=lf
+cli/tege2dev text eol=lf
+*.png binary
+*.jpg binary
+*.zst binary
+*.bpf binary
