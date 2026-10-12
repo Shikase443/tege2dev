@@ -3,6 +3,8 @@
 OpenAI Codex Coreを利用した、ローカルLLM向けの開発エージェントです。
 Web画面またはターミナルから、プロジェクト単位の会話セッションを利用できます。
 
+![Tege2Devの開発用Web画面](doc/web-ui.png)
+
 ## 必要なもの
 
 - Docker Compose、またはPodmanとComposeプロバイダー
