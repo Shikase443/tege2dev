@@ -1317,8 +1317,7 @@ prompt.addEventListener('keydown',event=>{
       event.preventDefault(); commandIndex=(commandIndex+(event.key==='ArrowDown'?1:-1)+commandMatches.length)%commandMatches.length; renderCommandMenu(); return;
     }
     if(event.key==='Escape') { event.preventDefault(); hideCommandMenu(); return; }
-    if(event.key==='Tab' && !event.shiftKey) { event.preventDefault(); chooseCommand(commandIndex); return; }
-    if(event.key==='Enter') hideCommandMenu();
+    if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); chooseCommand(commandIndex); return; }
   }
 });
 async function initialize() {
