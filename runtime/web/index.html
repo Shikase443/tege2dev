@@ -351,7 +351,7 @@
     #file-image { display:block; max-width:100%; max-height:none; margin:auto; padding:12px; object-fit:contain; }
     #file-image[hidden], #file-content[hidden] { display:none; }
     #messages {
-      padding:42px max(24px,calc((100% - 860px)/2)) 190px;
+      padding:42px max(24px,calc((100% - 860px)/2)) 130px;
       scrollbar-gutter:stable;
       line-height:1.45;
     }
@@ -460,16 +460,16 @@
       position:fixed;
       z-index:10;
       left:50%;
-      bottom:22px;
+      bottom:14px;
       transform:translateX(-50%);
       width:min(52vw,820px);
       min-width:560px;
-      min-height:116px;
+      min-height:80px;
       grid-template-columns:minmax(0,1fr) 42px 42px;
       align-items:end;
       gap:4px;
       margin:0;
-      padding:7px;
+      padding:5px;
       border:1px solid var(--line);
       border-radius:8px;
       background:var(--panel);
@@ -480,9 +480,10 @@
       max-width:calc(100vw - var(--file-pane-width) - 53px);
     }
     form#form textarea {
-      min-height:100px;
+      min-height:68px;
       max-height:240px;
-      padding:10px 11px;
+      padding:6px 8px;
+      line-height:1.35;
       resize:vertical;
       border:0;
       outline:0;
@@ -525,8 +526,8 @@
       #settings { order:4; }
       main { --file-pane-width:180px; }
       form#form { bottom:12px; }
-      form#form { width:calc(100vw - var(--file-pane-width) - 24px); min-height:104px; }
-      form#form textarea { min-height:86px; }
+      form#form { width:calc(100vw - var(--file-pane-width) - 24px); min-height:80px; }
+      form#form textarea { min-height:68px; }
       #messages { padding:26px 12px 30px; }
       .message { font-size:var(--content-font-size); }
       .user { max-width:90%; }
@@ -585,7 +586,7 @@
   </section>
   <form id="form">
     <div id="command-menu" role="listbox" aria-label="コマンド候補" hidden></div>
-    <textarea id="prompt" rows="4" placeholder="メッセージを入力" aria-controls="command-menu" aria-expanded="false" required></textarea>
+    <textarea id="prompt" rows="3" placeholder="メッセージを入力" title="Enterで改行、Ctrl+Enterで送信" aria-keyshortcuts="Control+Enter" aria-controls="command-menu" aria-expanded="false" required></textarea>
     <button id="send" type="submit" title="送信" aria-label="送信">&#8593;</button>
     <button id="stop" type="button" title="作業を停止" aria-label="作業を停止" hidden>■</button>
   </form>
@@ -1310,14 +1311,15 @@ prompt.addEventListener('input',updateCommandMenu);
 prompt.addEventListener('blur',hideCommandMenu);
 prompt.addEventListener('keydown',event=>{
   if(event.isComposing) return;
+  if(event.key==='Enter' && event.ctrlKey) { event.preventDefault(); $('form').requestSubmit(); return; }
   if(!commandMenu.hidden) {
     if(event.key==='ArrowDown' || event.key==='ArrowUp') {
       event.preventDefault(); commandIndex=(commandIndex+(event.key==='ArrowDown'?1:-1)+commandMatches.length)%commandMatches.length; renderCommandMenu(); return;
     }
     if(event.key==='Escape') { event.preventDefault(); hideCommandMenu(); return; }
-    if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); chooseCommand(commandIndex); return; }
+    if(event.key==='Tab' && !event.shiftKey) { event.preventDefault(); chooseCommand(commandIndex); return; }
+    if(event.key==='Enter') hideCommandMenu();
   }
-  if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); $('form').requestSubmit(); }
 });
 async function initialize() {
   try {
