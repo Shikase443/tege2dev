@@ -353,6 +353,7 @@
     #messages {
       padding:42px max(24px,calc((100% - 860px)/2)) 190px;
       scrollbar-gutter:stable;
+      line-height:1.45;
     }
     .message-row { display:flex; flex-direction:column; align-items:flex-start; margin-bottom:4px; }
     .message-row.user-row { align-items:flex-end; }
@@ -365,7 +366,7 @@
     .agent .copy-message { display:inline-grid; vertical-align:middle; margin-left:6px; }
     .agent { position:relative; }
     .agent .copy-message.block-end { position:absolute; right:0; bottom:0; margin:0; }
-    .turn-summary { display:flex; max-width:780px; gap:12px; margin:0 0 20px; color:var(--muted); font-size:var(--code-font-size); }
+    .turn-summary { display:flex; max-width:780px; gap:12px; margin:0 0 14px; color:var(--muted); font-size:var(--code-font-size); }
     .turn-summary .message-time { font-size:inherit; }
     .user {
       width:fit-content;
@@ -384,51 +385,51 @@
     .agent.markdown { white-space:normal; }
     .agent.markdown > :first-child { margin-top:0; }
     .agent.markdown > :last-child { margin-bottom:0; }
-    .agent.markdown p { margin:0 0 12px; }
+    .agent.markdown p { margin:0 0 8px; }
     .agent.markdown h1, .agent.markdown h2, .agent.markdown h3,
     .agent.markdown h4, .agent.markdown h5, .agent.markdown h6 {
-      margin:22px 0 10px;
+      margin:16px 0 6px;
       color:var(--text);
       line-height:1.3;
     }
     .agent.markdown h1 { font-size:1.55em; }
     .agent.markdown h2 { font-size:1.35em; }
     .agent.markdown h3 { font-size:1.16em; }
-    .agent.markdown ul, .agent.markdown ol { margin:0 0 14px; padding-left:26px; }
-    .agent.markdown li { margin:4px 0; }
+    .agent.markdown ul, .agent.markdown ol { margin:0 0 8px; padding-left:26px; }
+    .agent.markdown li { margin:2px 0; }
     .agent.markdown blockquote {
-      margin:0 0 14px;
+      margin:0 0 8px;
       padding:3px 0 3px 14px;
       border-left:3px solid var(--accent);
       color:var(--muted);
     }
     .agent.markdown pre {
-      margin:0 0 14px;
-      padding:13px 15px;
+      margin:0 0 8px;
+      padding:10px 13px;
       overflow:auto;
       border:1px solid var(--line);
       border-radius:6px;
       background:var(--activity);
-      font:var(--code-font-size)/1.55 ui-monospace,monospace;
+      font:var(--code-font-size)/1.45 ui-monospace,monospace;
       white-space:pre;
     }
     .agent.markdown code {
       padding:2px 5px;
       border-radius:4px;
       background:var(--activity);
-      font:var(--code-font-size)/1.55 ui-monospace,monospace;
+      font:var(--code-font-size)/1.45 ui-monospace,monospace;
     }
     .agent.markdown pre code { padding:0; background:transparent; }
-    .agent.markdown hr { margin:20px 0; border:0; border-top:1px solid var(--line); }
-    .agent.markdown .table-wrap { margin:0 0 14px; overflow:auto; }
+    .agent.markdown hr { margin:14px 0; border:0; border-top:1px solid var(--line); }
+    .agent.markdown .table-wrap { margin:0 0 8px; overflow:auto; }
     .agent.markdown table { width:100%; border-collapse:collapse; font-size:.94em; }
-    .agent.markdown th, .agent.markdown td { padding:8px 10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+    .agent.markdown th, .agent.markdown td { padding:6px 10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
     .agent.markdown th { background:var(--activity); font-weight:650; }
     .agent.markdown img { display:block; max-width:100%; max-height:60vh; margin:8px 0; border:1px solid var(--line); border-radius:4px; object-fit:contain; }
     .message a { color:var(--accent); }
     .activity {
       max-width:780px;
-      margin:4px 0 18px;
+      margin:4px 0 12px;
       padding:7px 12px;
       border-left:2px solid color-mix(in srgb,var(--accent) 45%,var(--line));
       background:transparent;
