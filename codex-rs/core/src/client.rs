@@ -175,8 +175,9 @@ pub(crate) const WEBSOCKET_CONNECT_TIMEOUT: Duration =
 
 /// Local Responses-compatible servers commonly expose chat templates with only
 /// system, user, and assistant roles. Keep Codex's richer role model internally,
-/// but collapse textual system/developer items into the single top-level
-/// `instructions` field before sending a request to a non-OpenAI provider.
+/// but collapse only the leading textual system/developer items into the
+/// top-level `instructions` field. Later instructions stay in chronological
+/// order as system messages so a new turn does not invalidate the history prefix.
 fn normalize_instruction_roles_for_compat(
     instructions: &mut String,
     input: &mut Vec<ResponseItem>,
@@ -187,7 +188,8 @@ fn normalize_instruction_roles_for_compat(
     }
 
     let mut retained = Vec::with_capacity(input.len());
-    for item in input.drain(..) {
+    let mut leading_instructions = true;
+    for mut item in input.drain(..) {
         let instruction_text = match &item {
             ResponseItem::Message { role, content, .. }
                 if matches!(role.as_str(), "system" | "developer") =>
@@ -197,11 +199,19 @@ fn normalize_instruction_roles_for_compat(
             _ => None,
         };
 
-        if let Some(text) = instruction_text {
+        let textual_instruction = instruction_text.is_some();
+        if let Some(text) = instruction_text.filter(|_| leading_instructions) {
             if !text.trim().is_empty() {
                 instruction_blocks.push(text);
             }
         } else {
+            leading_instructions = false;
+            if let ResponseItem::Message { role, .. } = &mut item
+                && textual_instruction
+                && role == "developer"
+            {
+                *role = "system".to_string();
+            }
             retained.push(item);
         }
     }

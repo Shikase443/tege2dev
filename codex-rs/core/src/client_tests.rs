@@ -162,6 +162,78 @@ fn compatibility_normalization_keeps_non_text_instruction_items() {
     assert_eq!(input.len(), 1);
 }
 
+fn compatibility_text_message(role: &str, text: &str) -> ResponseItem {
+    ResponseItem::Message {
+        id: None,
+        role: role.to_string(),
+        content: vec![ContentItem::InputText {
+            text: text.to_string(),
+        }],
+        phase: None,
+        internal_chat_message_metadata_passthrough: None,
+    }
+}
+
+#[test]
+fn compatibility_normalization_preserves_turn_instruction_order() {
+    let mut instructions = "base".to_string();
+    let mut input = vec![
+        compatibility_text_message("developer", "character"),
+        compatibility_text_message("user", "previous question"),
+        compatibility_text_message("assistant", "previous answer"),
+        compatibility_text_message("developer", "current time and location"),
+        compatibility_text_message("user", "new question"),
+    ];
+
+    normalize_instruction_roles_for_compat(&mut instructions, &mut input);
+
+    assert_eq!(instructions, "base\n\ncharacter");
+    assert_eq!(input, vec![
+        compatibility_text_message("user", "previous question"),
+        compatibility_text_message("assistant", "previous answer"),
+        compatibility_text_message("system", "current time and location"),
+        compatibility_text_message("user", "new question"),
+    ]);
+}
+
+#[test]
+fn compatibility_normalization_keeps_previous_prefix_on_append() {
+    let history = vec![
+        compatibility_text_message("developer", "character"),
+        compatibility_text_message("user", "previous question"),
+        compatibility_text_message("developer", "previous turn context"),
+        compatibility_text_message("assistant", "previous answer"),
+    ];
+    let mut previous = history.clone();
+    let mut current = history;
+    current.push(compatibility_text_message("developer", "new turn context"));
+    current.push(compatibility_text_message("user", "new question"));
+    let mut previous_instructions = "base".to_string();
+    let mut current_instructions = previous_instructions.clone();
+
+    normalize_instruction_roles_for_compat(&mut previous_instructions, &mut previous);
+    normalize_instruction_roles_for_compat(&mut current_instructions, &mut current);
+
+    assert_eq!(previous_instructions, current_instructions);
+    assert_eq!(&current[..previous.len()], previous.as_slice());
+}
+
+#[test]
+fn compatibility_normalization_keeps_mid_history_system_in_place() {
+    let mut instructions = "base".to_string();
+    let mut input = vec![
+        compatibility_text_message("user", "question"),
+        compatibility_text_message("system", "updated instructions"),
+        compatibility_text_message("user", "follow up"),
+    ];
+    let original = input.clone();
+
+    normalize_instruction_roles_for_compat(&mut instructions, &mut input);
+
+    assert_eq!(instructions, "base");
+    assert_eq!(input, original);
+}
+
 fn test_model_client(session_source: SessionSource) -> ModelClient {
     test_model_client_with_thread_id(ThreadId::new(), session_source)
 }

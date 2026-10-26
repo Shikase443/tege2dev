@@ -1,6 +1,6 @@
 # Codexからの変更内容
 
-記録日: 2026-10-13
+記録日: 2026-10-26
 
 ## 比較元
 
@@ -12,8 +12,24 @@ OpenAIのCodexの次のコミットに保存されたコードと比較しまし
 - Commit title: Update the frameless realtime default model (#40321)
 - Commit URL: https://github.com/openai/codex/commit/068c49f075cf287a1fe7d1ee36cf005efac922e7
 
-現在の家庭用エージェントの作業中コードではなく、Gitのコミットに保存された
-元のコードを比較元にしています。LFとCRLFの違いは内容変更と区別しています。
+Gitのコミットに保存された元のコードを比較元にしています。
+LFとCRLFの違いは内容変更と区別しています。
+
+## 0.1.1の変更
+
+ローカルLLMへの送信時に、履歴途中のsystem/developer指示を先頭へ移動していた
+処理を変更しました。先頭に連続する指示だけを`instructions`へ統合し、履歴途中の
+指示は元の位置を維持します。互換性のため、途中のdeveloperロールはsystemへ
+変換します。
+
+新しいターンの指示追加によって既存の履歴の先頭部分が変わることを避け、
+LLMサーバーがKVキャッシュを再利用しやすくします。実際の再利用量は、
+LLMサーバーと会話履歴の変更内容に依存します。
+
+指示の順序、履歴への追記時の先頭一致、途中のsystem指示の保持について、
+3件の回帰テストを追加しました。変更関数を抽出したテスト3件と、
+変更後のサーバーを含むコンテナのリリースビルドを確認しています。
+Core全体の単体テストは実行していません。
 
 ## 既存ファイルの変更
 
@@ -30,9 +46,9 @@ OpenAIのCodexの次のコミットに保存されたコードと比較しまし
 | `codex-rs/codex-api/src/sse/responses.rs` | アイドルタイムアウトが0の場合、SSE待機時間に制限を設けない。 |
 | `codex-rs/codex-api/tests/clients.rs` | APIクライアントのテスト用リクエストを追加フィールドに対応。 |
 | `codex-rs/core-api/src/lib.rs` | `McpServerConfig`をCore APIから公開。 |
-| `codex-rs/core/src/client.rs` | 非OpenAIプロバイダー向けにテキストのsystem/developer指示をトップレベルのinstructionsへ統合。出力上限とtemperatureを環境変数から送信し、接続再利用の比較条件にも追加。 |
+| `codex-rs/core/src/client.rs` | 非OpenAIプロバイダー向けに先頭のテキスト指示だけをinstructionsへ統合し、履歴途中の指示は順序を保持。出力上限とtemperatureを環境変数から送信し、接続再利用の比較条件にも追加。 |
 | `codex-rs/core/src/client_common_tests.rs` | 共通テストのリクエストに追加フィールドを設定。 |
-| `codex-rs/core/src/client_tests.rs` | 指示ロールの統合と、画像を含む指示を保持する動作のテストを追加。 |
+| `codex-rs/core/src/client_tests.rs` | 指示ロールの統合、画像を含む指示の保持、途中の指示の順序保持、追記時の先頭一致についてテストを追加。 |
 | `codex-rs/core/src/codex_delegate.rs` | ターン開始オプションに`disable_tools: false`を設定。 |
 | `codex-rs/core/src/guardian/review_session.rs` | レビュー用ターンに`disable_tools: false`を設定。 |
 | `codex-rs/core/src/session/turn_input.rs` | `disable_tools`を受け取り、該当ターンでツールを無効化する状態を設定。 |
